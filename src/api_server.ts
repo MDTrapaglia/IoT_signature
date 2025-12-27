@@ -1,12 +1,32 @@
 import express, { type Request, type Response } from 'express';
+import elliptic from 'elliptic';
 
-// 1. Definimos una "Interface" (Puro TypeScript)
-// Esto asegura que si el Arduino no envía la firma, el código lo sepa de inmediato.
+const EC = elliptic.ec;
+const ec = new EC('secp256k1'); // Curva secp256k1 (Bitcoin/Ethereum)
+
 interface ArduinoPayload {
   sensor_id: string;
-  value: number;
-  signature: string;
-  publicKey: string;
+  hash: string;        // SHA-256 hash del mensaje (hex)
+  signature: string;   // Firma ECDSA (r+s, 64 bytes hex)
+  publicKey: string;   // Clave pública (x+y, 64 bytes hex)
+}
+
+// Verifica firma ECDSA
+function verifySignature(hash: string, signature: string, publicKey: string): boolean {
+  try {
+    // Agregar prefijo 04 para indicar clave pública sin comprimir
+    const pubKeyWithPrefix = '04' + publicKey.toLowerCase();
+    const key = ec.keyFromPublic(pubKeyWithPrefix, 'hex');
+
+    // Dividir firma en r y s (cada uno 32 bytes = 64 hex chars)
+    const r = signature.substring(0, 64).toLowerCase();
+    const s = signature.substring(64, 128).toLowerCase();
+
+    return key.verify(hash.toLowerCase(), { r, s });
+  } catch (error) {
+    console.error('Error verificando firma:', error);
+    return false;
+  }
 }
 
 const app = express();
@@ -23,22 +43,32 @@ app.post('/api/ingest', (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
-  if (!payload.signature || !payload.value) {
-    return res.status(400).json({ error: "Faltan datos o firma criptográfica" });
+  if (!payload.signature || !payload.hash || !payload.publicKey) {
+    return res.status(400).json({ error: "Faltan datos: hash, signature o publicKey" });
   }
 
-  console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}: ${payload.value}`);
-  
-  // En el futuro, aquí iría la lógica de:
-  // 1. Verificar firma con TweetNaCl
-  // 2. Guardar en PostgreSQL con Prisma
-  
+  console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}`);
+  console.log(`   Hash: ${payload.hash.substring(0, 16)}...`);
+  console.log(`   Signature: ${payload.signature.substring(0, 16)}...`);
+
+  // Verificar firma ECDSA
+  const isValid = verifySignature(payload.hash, payload.signature, payload.publicKey);
+
+  if (!isValid) {
+    console.log(`❌ Firma inválida para sensor ${payload.sensor_id}`);
+    return res.status(401).json({
+      status: "error",
+      error: "Firma ECDSA inválida"
+    });
+  }
+
+  console.log(`✅ Firma válida para sensor ${payload.sensor_id}`);
   measurementsHistory.push(payload);
 
-  // Respondemos al Arduino que todo salió bien
   res.status(201).json({
     status: "success",
-    message: "Dato recibido y pendiente de certificación en Cardano"
+    message: "Firma verificada. Dato pendiente de certificación en Cardano",
+    verified: true
   });
 });
 
