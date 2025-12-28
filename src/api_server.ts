@@ -33,7 +33,9 @@ function verifySignature(hash: string, signature: string, publicKey: string): bo
 
 const app = express();
 const PORT = 3001;
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN || 'gaelito2025';
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN || 'c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://192.168.100.200:3000';
+const MAX_MEASUREMENTS = 1000; // Máximo de mediciones en memoria
 
 // Rate limiting: 100 requests por 15 minutos por IP
 const limiter = rateLimit({
@@ -45,8 +47,30 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+// Permitir múltiples orígenes para desarrollo
+app.use(cors({
+  origin: function(origin, callback) {
+    // Permitir requests sin origin (como Postman, curl, ESP32)
+    if (!origin) return callback(null, true);
+
+    // Permitir el frontend configurado y variaciones comunes
+    const allowedOrigins = [
+      FRONTEND_URL,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://192.168.100.200:3000',
+      'http://186.123.164.151:3000'
+    ];
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // En desarrollo, permitir todos los orígenes
+    }
+  },
+  credentials: true
+}));
+app.use(express.json({ limit: '10kb' })); // Limita tamaño de payload
 app.use(limiter);
 
 // Middleware de autenticación por token
@@ -69,8 +93,23 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
-  if (!payload.signature || !payload.hash || !payload.publicKey) {
-    return res.status(400).json({ error: "Faltan datos: hash, signature o publicKey" });
+  if (!payload.signature || !payload.hash || !payload.publicKey || !payload.sensor_id) {
+    return res.status(400).json({ error: "Faltan datos requeridos" });
+  }
+
+  // Validar formato hexadecimal
+  const hexRegex = /^[0-9A-Fa-f]+$/;
+
+  if (!hexRegex.test(payload.hash) || payload.hash.length !== 64) {
+    return res.status(400).json({ error: "Hash inválido (debe ser 64 caracteres hex)" });
+  }
+
+  if (!hexRegex.test(payload.signature) || payload.signature.length !== 128) {
+    return res.status(400).json({ error: "Signature inválida (debe ser 128 caracteres hex)" });
+  }
+
+  if (!hexRegex.test(payload.publicKey) || payload.publicKey.length !== 128) {
+    return res.status(400).json({ error: "PublicKey inválida (debe ser 128 caracteres hex)" });
   }
 
   console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}`);
@@ -89,7 +128,14 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   }
 
   console.log(`✅ Firma válida para sensor ${payload.sensor_id}`);
+
+  // Agregar nueva medición
   measurementsHistory.push(payload);
+
+  // Mantener solo las últimas MAX_MEASUREMENTS mediciones
+  if (measurementsHistory.length > MAX_MEASUREMENTS) {
+    measurementsHistory = measurementsHistory.slice(-MAX_MEASUREMENTS);
+  }
 
   res.status(201).json({
     status: "success",
@@ -103,8 +149,9 @@ app.get('/api/measurements', validateToken, (req: Request, res: Response) => {
   res.json(measurementsHistory);
 });
 
-app.listen(PORT, () => {
-  console.log(`🌐 API Rest activa en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 API Rest activa en http://0.0.0.0:${PORT}`);
   console.log(`📡 Esperando datos en POST /api/ingest`);
+  console.log(`🔗 Accesible desde la red en http://186.123.164.151:${PORT}`);
 });
 
