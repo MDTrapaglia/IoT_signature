@@ -1,4 +1,6 @@
 import express, { type Request, type Response } from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import elliptic from 'elliptic';
 
 const EC = elliptic.ec;
@@ -30,16 +32,40 @@ function verifySignature(hash: string, signature: string, publicKey: string): bo
 }
 
 const app = express();
-const PORT = 3001; // Usamos un puerto distinto al anterior
+const PORT = 3001;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN || 'gaelito2025';
 
-// Middleware para que Express pueda leer el cuerpo (body) de las peticiones POST
+// Rate limiting: 100 requests por 15 minutos por IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // máximo 100 requests por ventana
+  message: { error: 'Not Found' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(limiter);
+
+// Middleware de autenticación por token
+// Retorna 404 para ocultar la existencia del endpoint
+function validateToken(req: Request, res: Response, next: any) {
+  const token = req.query.token || req.headers['x-access-token'];
+
+  if (token !== ACCESS_TOKEN) {
+    return res.status(404).json({ error: 'Not Found' });
+  }
+
+  next();
+}
 
 // Base de datos temporal (Array)
 let measurementsHistory: ArduinoPayload[] = [];
 
 // 2. RUTA POST: Aquí es donde el Arduino "empuja" los datos
-app.post('/api/ingest', (req: Request, res: Response) => {
+app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
@@ -73,7 +99,7 @@ app.post('/api/ingest', (req: Request, res: Response) => {
 });
 
 // 3. RUTA GET: Para que el Frontend consulte los datos
-app.get('/api/measurements', (req: Request, res: Response) => {
+app.get('/api/measurements', validateToken, (req: Request, res: Response) => {
   res.json(measurementsHistory);
 });
 
