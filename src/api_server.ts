@@ -11,6 +11,7 @@ interface ArduinoPayload {
   hash: string;        // SHA-256 hash del mensaje (hex)
   signature: string;   // Firma ECDSA (r+s, 64 bytes hex)
   publicKey: string;   // Clave pública (x+y, 64 bytes hex)
+  verified?: boolean;  // Si la firma fue verificada exitosamente
 }
 
 // Verifica firma ECDSA
@@ -121,16 +122,32 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
 
   if (!isValid) {
     console.log(`❌ Firma inválida para sensor ${payload.sensor_id}`);
+
+    // Guardar medición con verified: false
+    measurementsHistory.push({
+      ...payload,
+      verified: false
+    });
+
+    // Mantener solo las últimas MAX_MEASUREMENTS mediciones
+    if (measurementsHistory.length > MAX_MEASUREMENTS) {
+      measurementsHistory = measurementsHistory.slice(-MAX_MEASUREMENTS);
+    }
+
     return res.status(401).json({
       status: "error",
-      error: "Firma ECDSA inválida"
+      error: "Firma ECDSA inválida",
+      verified: false
     });
   }
 
   console.log(`✅ Firma válida para sensor ${payload.sensor_id}`);
 
-  // Agregar nueva medición
-  measurementsHistory.push(payload);
+  // Agregar nueva medición con verified: true
+  measurementsHistory.push({
+    ...payload,
+    verified: true
+  });
 
   // Mantener solo las últimas MAX_MEASUREMENTS mediciones
   if (measurementsHistory.length > MAX_MEASUREMENTS) {

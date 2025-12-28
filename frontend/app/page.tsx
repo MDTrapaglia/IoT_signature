@@ -25,8 +25,8 @@ export default function Home() {
       const res = await fetch(`${API_URL}/api/measurements?token=${ACCESS_TOKEN}`);
       if (!res.ok) throw new Error("Error fetching data");
       const data = await res.json();
-      // All measurements that reach the frontend are verified (backend rejects invalid)
-      setMeasurements(data.map((m: Measurement) => ({ ...m, verified: true })));
+      // Use verified field from backend (true for valid signatures, false for invalid)
+      setMeasurements(data);
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
@@ -92,7 +92,11 @@ export default function Home() {
           {measurements.map((m, idx) => (
             <div
               key={idx}
-              className="bg-zinc-800 border border-zinc-700 rounded-lg p-6"
+              className={`bg-zinc-800 border rounded-lg p-6 ${
+                m.verified
+                  ? 'border-zinc-700'
+                  : 'border-red-700 bg-red-950/30'
+              }`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -154,7 +158,7 @@ export default function Home() {
 
         {measurements.length > 0 && (
           <div className="mt-6 text-center text-sm text-zinc-500">
-            Total: {measurements.length} mediciones verificadas
+            Total: {measurements.length} mediciones ({measurements.filter(m => m.verified).length} verificadas, {measurements.filter(m => !m.verified).length} rechazadas)
           </div>
         )}
       </main>
