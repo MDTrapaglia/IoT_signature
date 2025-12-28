@@ -2,18 +2,22 @@
 cd "$(dirname "$0")/frontend"
 
 PID_FILE=".frontend.pid"
+LOCK_FILE=".next/dev/lock"
 
+# Kill all next dev processes (child processes of npm)
+echo "Deteniendo todos los procesos 'next dev'..."
+pkill -f "next dev" 2>/dev/null && echo "Procesos detenidos" || echo "No se encontraron procesos corriendo"
+
+# Clean up PID file
 if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if kill -0 "$PID" 2>/dev/null; then
-        echo "Deteniendo frontend (PID: $PID)..."
-        kill "$PID"
-        echo "Frontend detenido"
-    else
-        echo "No hay proceso frontend corriendo con PID $PID"
-    fi
     rm -f "$PID_FILE"
-else
-    echo "No se encontró archivo PID. Intentando matar procesos 'next dev'..."
-    pkill -f "next dev" && echo "Procesos detenidos" || echo "No se encontraron procesos"
+    echo "Archivo PID eliminado"
 fi
+
+# Remove lock file if exists
+if [ -f "$LOCK_FILE" ]; then
+    echo "Eliminando lock file..."
+    rm -f "$LOCK_FILE"
+fi
+
+echo "Frontend detenido completamente"
