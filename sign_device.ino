@@ -7,6 +7,10 @@ uint8_t private_key[32] = {0xA3, 0x3D, 0x9C, 0x42, 0x04, 0x76, 0xBA, 0xEB, 0xE1,
 uint8_t sig[64];
 const struct uECC_Curve_t * curve = uECC_secp256k1();
 
+unsigned long initTime;
+unsigned long signTime;
+unsigned long shaTime;
+
 // Función para generar un número aleatorio (necesaria para la firma ECC)
 // En un Nano, usamos el ruido del pin analógico 0 como semilla.
 static int RNG(uint8_t *dest, unsigned size) {
@@ -51,16 +55,23 @@ void loop() {
 
   // 2. Calcular SHA-256 del payload
   uint8_t hash[32];
+  initTime = millis();
   Sha256.init();
   Sha256.print(payload);
-  Sha256.final(hash); 
+  Sha256.final(hash);
+  shaTime = millis() - initTime ; 
   
   // 2. Firmar el hash
   uECC_sign(private_key, hash, 32, sig, curve);
-
-  Serial.print("SIG:"); 
-  printHex(sig, 64);
-  Serial.print("HASH:"); 
+  signTime = millis - shaTime ;
+  Serial.print("\n\nHASH:"); 
   printHex(hash, 32);
+  Serial.print("SHA execution time (s): ");
+  Serial.print(shaTime / 1000.0, 4);
+  Serial.print("\nSIG:"); 
+  printHex(sig, 64);
+  Serial.print("Signature execution time (s): ");
+  Serial.print(signTime  / 1000.0, 4);
+  
   delay(10000);
 }
