@@ -175,13 +175,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: offchain/frontend/.next
+          path: frontend-build/
 
       - name: Deploy notification
         run: |
           echo "🚀 Deployment ready!"
-          echo "Backend artifacts downloaded"
-          echo "Frontend build downloaded"
+          echo "Backend artifacts downloaded to dist/"
+          echo "Frontend build downloaded to frontend-build/"
+          ls -la dist/
+          ls -la frontend-build/
           echo "Ready for deployment to production server"
           # Add your deployment commands here:
           # - SSH to server
@@ -189,5 +191,6 @@ jobs:
           # - Restart services
           # - Run migrations
           # Example:
-          # scp -r offchain/ user@server:/path/to/app/
+          # scp -r dist/ user@server:/path/to/app/backend/
+          # scp -r frontend-build/ user@server:/path/to/app/frontend/.next/
           # ssh user@server 'cd /path/to/app && pm2 restart all'
