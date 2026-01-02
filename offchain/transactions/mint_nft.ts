@@ -74,7 +74,7 @@ async function mintNFTTransaction(
     return txHash;
 }
 
-async function transfer() {
+async function _transfer() {
     const walletAddr = await wallet.getChangeAddress();
     //console.log("walletAddr: ", walletAddr)
     const utxos = await wallet.getUtxos()
@@ -91,11 +91,11 @@ async function transfer() {
         .selectUtxosFrom(utxos)
         .complete()
 
-    const signedTx = await wallet.signTx(unsignedTx)
+    const _signedTx = await wallet.signTx(unsignedTx)
 
-    //const txHash = await wallet.submitTx(signedTx)
+    //const txHash = await wallet.submitTx(_signedTx)
     //console.log("txHash: ", txHash)
 }
-// transfer()
+// _transfer()
 mintNFTTransaction(wallet, "BigThingsAreComing")
 console.log("Ready")

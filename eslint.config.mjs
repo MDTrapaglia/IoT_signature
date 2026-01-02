@@ -33,6 +33,10 @@ export default [
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_'
       }],
+      'no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off',
       'prefer-const': 'warn'
@@ -42,6 +46,7 @@ export default [
     ignores: [
       'node_modules/**',
       'offchain/frontend/**',
+      'offchain/backend/srial_index.ts',
       '**/*.js',
       '**/*.mjs',
       '**/*.d.ts',

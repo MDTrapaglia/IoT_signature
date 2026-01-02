@@ -43,9 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-build
-          path: |
-            offchain/backend/**/*.js
-            offchain/backend/**/*.d.ts
+          path: dist/
           retention-days: 7
 
   # Frontend Build & Test
@@ -171,7 +169,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-build
-          path: offchain/backend
+          path: dist/
 
       - name: Download frontend artifacts
         uses: actions/download-artifact@v4

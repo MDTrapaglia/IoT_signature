@@ -1,4 +1,4 @@
-import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import elliptic from 'elliptic';
@@ -93,7 +93,7 @@ app.use(limiter);
 
 // Middleware de autenticación por token
 // Retorna 404 para ocultar la existencia del endpoint
-function validateToken(req: Request, res: Response, next: any) {
+function validateToken(req: Request, res: Response, next: NextFunction) {
   const token = req.query.token || req.headers['x-access-token'];
 
   if (token !== ACCESS_TOKEN) {
