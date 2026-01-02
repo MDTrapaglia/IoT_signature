@@ -21,7 +21,13 @@ SIGNATURES=(
   "E3FFF6392F74522740B23853417731F91D026CE1A8556514CED85E90ADB2B13EEFAE85BAEDE00EA8185DE10B717584FF50A02548F4320700DC0D4699906DC033"
 )
 
+# Mensaje de ejemplo y su hash correspondiente
+MESSAGE="sensor_id=ESP32_001,temp=25.0,humidity=60.0"
 HASH="ABDD6FCAE1168AAB0278BC7E5D0B86671F720AEC6BB00CBF070C6136BC0ACAC7"
+
+# Datos del sensor
+TEMPERATURE=25.0
+HUMIDITY=60.0
 
 echo "=== Testing ECDSA Signature Validation ==="
 echo ""
@@ -32,6 +38,9 @@ for i in "${!SIGNATURES[@]}"; do
     -H "Content-Type: application/json" \
     -d "{
       \"sensor_id\": \"ESP32_001\",
+      \"message\": \"$MESSAGE\",
+      \"temperature\": $TEMPERATURE,
+      \"humidity\": $HUMIDITY,
       \"hash\": \"$HASH\",
       \"signature\": \"${SIGNATURES[$i]}\",
       \"publicKey\": \"$PUB_KEY\"

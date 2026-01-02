@@ -54,12 +54,16 @@ def sign_message(message: str, private_key: SigningKey):
     return hash_hex, signature_hex, public_key_hex
 
 
-def send_to_backend(sensor_id: str, hash_hex: str, signature_hex: str, public_key_hex: str):
+def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: float,
+                    hash_hex: str, signature_hex: str, public_key_hex: str):
     """
     Envía los datos firmados al backend
 
     Args:
         sensor_id: Identificador del sensor
+        message: Mensaje original que se firmó
+        temperature: Temperatura en °C
+        humidity: Humedad relativa en %
         hash_hex: Hash SHA-256 en hexadecimal (64 caracteres)
         signature_hex: Firma ECDSA en hexadecimal (128 caracteres)
         public_key_hex: Clave pública en hexadecimal (128 caracteres)
@@ -69,6 +73,9 @@ def send_to_backend(sensor_id: str, hash_hex: str, signature_hex: str, public_ke
     """
     payload = {
         "sensor_id": sensor_id,
+        "message": message,
+        "temperature": temperature,
+        "humidity": humidity,
         "hash": hash_hex,
         "signature": signature_hex,
         "publicKey": public_key_hex
@@ -76,6 +83,9 @@ def send_to_backend(sensor_id: str, hash_hex: str, signature_hex: str, public_ke
 
     # Mostrar información de debug
     print(f"📤 Enviando datos del sensor {sensor_id}:")
+    print(f"   Mensaje: {message}")
+    print(f"   Temperatura: {temperature}°C")
+    print(f"   Humedad: {humidity}%")
     print(f"   Hash: {hash_hex[:16]}... ({len(hash_hex)} chars)")
     print(f"   Signature: {signature_hex[:16]}... ({len(signature_hex)} chars)")
     print(f"   PublicKey: {public_key_hex[:16]}... ({len(public_key_hex)} chars)")
@@ -116,11 +126,13 @@ def main():
     # Firmar el mensaje
     hash_hex, signature_hex, public_key_hex = sign_message(message, private_key)
 
-    # Enviar al backend
-    result = send_to_backend(SENSOR_ID, hash_hex, signature_hex, public_key_hex)
+    # Enviar al backend con todos los datos
+    result = send_to_backend(SENSOR_ID, message, temperature, humidity,
+                            hash_hex, signature_hex, public_key_hex)
 
     if result and result.get("verified"):
         print("\n✅ Firma verificada exitosamente!")
+        print("📊 Datos del sensor almacenados en el backend")
     else:
         print("\n❌ Error: firma no verificada")
 

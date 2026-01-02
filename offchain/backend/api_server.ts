@@ -2,16 +2,32 @@ import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import elliptic from 'elliptic';
+import crypto from 'crypto';
 
 const EC = elliptic.ec;
 const ec = new EC('secp256k1'); // Curva secp256k1 (Bitcoin/Ethereum)
 
 interface ArduinoPayload {
   sensor_id: string;
-  hash: string;        // SHA-256 hash del mensaje (hex)
-  signature: string;   // Firma ECDSA (r+s, 64 bytes hex)
-  publicKey: string;   // Clave pública (x+y, 64 bytes hex)
-  verified?: boolean;  // Si la firma fue verificada exitosamente
+  temperature?: number;  // Temperatura en °C (opcional)
+  humidity?: number;     // Humedad relativa % (opcional)
+  message: string;       // Mensaje original firmado
+  hash: string;          // SHA-256 hash del mensaje (hex)
+  signature: string;     // Firma ECDSA (r+s, 64 bytes hex)
+  publicKey: string;     // Clave pública (x+y, 64 bytes hex)
+  verified?: boolean;    // Si la firma fue verificada exitosamente
+  timestamp?: number;    // Unix timestamp de cuando se recibió
+}
+
+// Calcula SHA-256 hash de un mensaje
+function calculateHash(message: string): string {
+  return crypto.createHash('sha256').update(message).digest('hex').toUpperCase();
+}
+
+// Verifica que el hash corresponda al mensaje
+function verifyHash(message: string, providedHash: string): boolean {
+  const calculatedHash = calculateHash(message);
+  return calculatedHash.toLowerCase() === providedHash.toLowerCase();
 }
 
 // Verifica firma ECDSA
@@ -94,8 +110,8 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
-  if (!payload.signature || !payload.hash || !payload.publicKey || !payload.sensor_id) {
-    return res.status(400).json({ error: "Faltan datos requeridos" });
+  if (!payload.signature || !payload.hash || !payload.publicKey || !payload.sensor_id || !payload.message) {
+    return res.status(400).json({ error: "Faltan datos requeridos (sensor_id, message, hash, signature, publicKey)" });
   }
 
   // Validar formato hexadecimal
@@ -114,8 +130,21 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   }
 
   console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}`);
+  console.log(`   Mensaje: ${payload.message}`);
+  if (payload.temperature !== undefined) console.log(`   Temperatura: ${payload.temperature}°C`);
+  if (payload.humidity !== undefined) console.log(`   Humedad: ${payload.humidity}%`);
   console.log(`   Hash: ${payload.hash.substring(0, 16)}...`);
   console.log(`   Signature: ${payload.signature.substring(0, 16)}...`);
+
+  // Verificar que el hash corresponda al mensaje
+  if (!verifyHash(payload.message, payload.hash)) {
+    console.log(`❌ Hash no corresponde al mensaje para sensor ${payload.sensor_id}`);
+    return res.status(400).json({
+      status: "error",
+      error: "El hash no corresponde al mensaje proporcionado",
+      verified: false
+    });
+  }
 
   // Verificar firma ECDSA
   const isValid = verifySignature(payload.hash, payload.signature, payload.publicKey);
@@ -126,7 +155,8 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
     // Guardar medición con verified: false
     measurementsHistory.push({
       ...payload,
-      verified: false
+      verified: false,
+      timestamp: Date.now()
     });
 
     // Mantener solo las últimas MAX_MEASUREMENTS mediciones
@@ -146,7 +176,8 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   // Agregar nueva medición con verified: true
   measurementsHistory.push({
     ...payload,
-    verified: true
+    verified: true,
+    timestamp: Date.now()
   });
 
   // Mantener solo las últimas MAX_MEASUREMENTS mediciones
