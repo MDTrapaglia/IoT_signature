@@ -39,3 +39,9 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Nix
+.direnv/
+result
+result-*
+.devenv/

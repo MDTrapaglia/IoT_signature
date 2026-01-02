@@ -137,13 +137,49 @@ npm run dev                  # Servidor de desarrollo (puerto 3000)
 ./scripts/frontend_stop.sh   # Detener frontend
 ```
 
-## Desarrollo
+## Development
+
+### Reproducible Development Environment with Nix (Recommended)
+
+This project uses [Nix](https://nixos.org/) to provide a reproducible development environment with all required tools pre-configured.
+
+#### Prerequisites
+
+- Install Nix with flakes enabled: https://nixos.org/download.html
+- Optionally install [direnv](https://direnv.net/) for automatic environment activation
+
+#### Quick Start with Nix
+
+```bash
+# Validate your Nix installation and flake configuration
+./scripts/validate_nix.sh
+
+# Enter the Nix development environment
+nix develop
+
+# Or if you have direnv installed:
+direnv allow  # Automatically loads the environment when you cd into the project
+```
+
+The Nix environment includes:
+- Node.js 20 LTS
+- npm, TypeScript, tsx
+- Arduino CLI (for ESP32 development)
+- Git, curl, jq, and other utilities
+
+#### Benefits
+- **Reproducible**: Same environment across all machines
+- **Isolated**: No conflicts with system-wide packages
+- **Declarative**: All dependencies defined in `flake.nix`
+- **Version-pinned**: Guarantees exact tool versions
+
+📖 **Detailed guide**: See [docs/NIX_SETUP.md](docs/NIX_SETUP.md) for complete installation instructions, troubleshooting, and advanced usage.
 
 ### Configuracion Inicial
 
 1. Clonar el repositorio
 2. Copiar `.env.example` a `.env` y configurar `ACCESS_TOKEN`
-3. Instalar dependencias: `npm install`
+3. **(Nix)** Run `nix develop` OR **(Traditional)** Install dependencies: `npm install`
 4. En `offchain/frontend/`, copiar `.env.example` a `.env.local`
 5. Configurar `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_ACCESS_TOKEN`
 
