@@ -5,14 +5,18 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/api_server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "demo": "tsx watch src/transaction.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "nft": "tsx src/mint_nft"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@meshsdk/core": "^1.9.0-beta.90",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "elliptic": "^6.6.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1"
