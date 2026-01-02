@@ -15,7 +15,7 @@ El sistema permite capturar mediciones desde un dispositivo ESP32, firmarlas cri
   - Captura de datos del sensor (temperatura, humedad, etc.)
   - Firma de los datos usando el algoritmo ECDSA secp256k1
   - Envio de JSON: `{ sensor_id, hash, signature, publicKey }`
-- **Archivo:** `sign_device.ino` (Arduino sketch)
+- **Archivo:** `hardware/sign_device.ino` (Arduino sketch)
 
 ### B. Capa de Backend (Orquestador)
 
@@ -28,12 +28,12 @@ El sistema permite capturar mediciones desde un dispositivo ESP32, firmarlas cri
   - **Validacion de Origen:** Verifica firmas ECDSA secp256k1 usando la libreria `elliptic`
   - **Almacenamiento:** In-memory (array), retorna 401 para firmas invalidas
   - **Integracion Blockchain (Futura):** MeshJS o Lucid para transacciones en Cardano
-- **Archivo Principal:** `src/api_server.ts`
+- **Archivo Principal:** `offchain/backend/api_server.ts`
 - **Puerto:** 3001
 - **Scripts de Control:**
-  - `./backend_start.sh` - Inicia el servidor backend
-  - `./backend_stop.sh` - Detiene el servidor backend
-  - `./test_signatures.sh` - Prueba de validacion de 4 firmas reales + 1 invalida
+  - `./scripts/backend_start.sh` - Inicia el servidor backend
+  - `./scripts/backend_stop.sh` - Detiene el servidor backend
+  - `./scripts/test_signatures.sh` - Prueba de validacion de 4 firmas reales + 1 invalida
 
 ### C. Capa de Frontend (Dashboard)
 
@@ -43,12 +43,12 @@ El sistema permite capturar mediciones desde un dispositivo ESP32, firmarlas cri
   - Muestra hash, firma, clave publica y estado de verificacion
   - Indicadores visuales: verde para firmas validas, rojo para rechazadas
   - Tema oscuro (zinc palette)
-- **Directorio:** `frontend/`
+- **Directorio:** `offchain/frontend/`
 - **Puerto:** 3000
 - **Scripts de Control:**
-  - `./frontend_start.sh` - Inicia el servidor Next.js
-  - `./frontend_stop.sh` - Detiene el servidor frontend
-- **Configuracion:** `.env.local` (API URL y token de acceso)
+  - `./scripts/frontend_start.sh` - Inicia el servidor Next.js
+  - `./scripts/frontend_stop.sh` - Detiene el servidor frontend
+- **Configuracion:** `offchain/frontend/.env.local` (API URL y token de acceso)
 
 ## 3. Especificaciones Tecnicas y Conexiones
 
@@ -118,23 +118,23 @@ interface StoredMeasurement extends ArduinoPayload {
 ### Backend
 
 ```bash
-npm install              # Instalar dependencias
-npm run dev              # Servidor con hot-reload (tsx watch)
-./backend_start.sh       # Iniciar backend (guarda PID en .dev.pid)
-./backend_stop.sh        # Detener backend por PID
-./test.sh                # Test basico con curl
-./test_signatures.sh     # Test completo de validacion de firmas
+npm install                # Instalar dependencias
+npm run dev                # Servidor con hot-reload (tsx watch)
+./scripts/backend_start.sh # Iniciar backend (guarda PID en .dev.pid)
+./scripts/backend_stop.sh  # Detener backend por PID
+./scripts/test.sh          # Test basico con curl
+./scripts/test_signatures.sh # Test completo de validacion de firmas
 ```
 
 ### Frontend
 
 ```bash
-cd frontend
-npm install              # Instalar dependencias Next.js
-npm run dev              # Servidor de desarrollo (puerto 3000)
+cd offchain/frontend
+npm install                  # Instalar dependencias Next.js
+npm run dev                  # Servidor de desarrollo (puerto 3000)
 # O desde el directorio raiz:
-./frontend_start.sh      # Iniciar frontend
-./frontend_stop.sh       # Detener frontend
+./scripts/frontend_start.sh  # Iniciar frontend
+./scripts/frontend_stop.sh   # Detener frontend
 ```
 
 ## Desarrollo
@@ -144,14 +144,14 @@ npm run dev              # Servidor de desarrollo (puerto 3000)
 1. Clonar el repositorio
 2. Copiar `.env.example` a `.env` y configurar `ACCESS_TOKEN`
 3. Instalar dependencias: `npm install`
-4. En `frontend/`, copiar `.env.example` a `.env.local`
+4. En `offchain/frontend/`, copiar `.env.example` a `.env.local`
 5. Configurar `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_ACCESS_TOKEN`
 
 ### Iniciar Sistema Completo
 
 ```bash
-./backend_start.sh    # Terminal 1
-./frontend_start.sh   # Terminal 2
+./scripts/backend_start.sh    # Terminal 1
+./scripts/frontend_start.sh   # Terminal 2
 ```
 
 Acceder a:
@@ -173,14 +173,29 @@ Acceder a:
 - **Tailwind CSS** - Estilos utility-first
 - **lucide-react** - Iconos
 
+## Estructura del Proyecto
+
+```
+/
+├── offchain/
+│   ├── backend/        # API Express con validacion ECDSA
+│   ├── frontend/       # Dashboard Next.js
+│   └── transactions/   # Codigo de transacciones Cardano
+├── onchain/
+│   └── sensors-oracle/ # Contratos Aiken para Cardano
+├── hardware/           # Codigo Arduino/ESP32
+├── scripts/            # Scripts de gestion del sistema
+├── docs/               # Documentacion
+└── test-data/          # Datos de prueba
+
 ## Archivos Clave
 
-- `src/api_server.ts` - Servidor Express con validacion ECDSA
-- `sign_device.ino` - Sketch Arduino para ESP32
-- `test_payloads.json` - Datos de prueba con firmas reales del ESP32
-- `signed_msgs.txt` - Mensajes firmados originales del dispositivo
-- `CLAUDE.md` - Documentacion para Claude Code
-- `frontend/app/page.tsx` - Dashboard principal de Next.js
+- `offchain/backend/api_server.ts` - Servidor Express con validacion ECDSA
+- `hardware/sign_device.ino` - Sketch Arduino para ESP32
+- `test-data/test_payloads.json` - Datos de prueba con firmas reales del ESP32
+- `test-data/signed_msgs.txt` - Mensajes firmados originales del dispositivo
+- `docs/CLAUDE.md` - Documentacion para Claude Code
+- `offchain/frontend/app/page.tsx` - Dashboard principal de Next.js
 
 ## Testing
 
@@ -189,7 +204,7 @@ El script `test_signatures.sh` valida automaticamente:
 - 1 firma alterada (retorna 401)
 
 ```bash
-./test_signatures.sh
+./scripts/test_signatures.sh
 ```
 
 ## Proximos Pasos

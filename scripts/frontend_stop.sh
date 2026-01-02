@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "$(dirname "$0")/frontend"
+cd "$(dirname "$0")/../offchain/frontend"
 
 PID_FILE=".frontend.pid"
 LOCK_FILE=".next/dev/lock"

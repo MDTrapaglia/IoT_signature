@@ -4,10 +4,10 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/api_server.ts",
-    "demo": "tsx watch src/transaction.ts",
+    "dev": "tsx watch offchain/backend/api_server.ts",
+    "demo": "tsx watch offchain/transactions/transaction.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "nft": "tsx src/mint_nft"
+    "nft": "tsx offchain/transactions/mint_nft.ts"
   },
   "keywords": [],
   "author": "",
