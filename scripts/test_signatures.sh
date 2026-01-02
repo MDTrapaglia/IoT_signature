@@ -28,6 +28,7 @@ HASH="ABDD6FCAE1168AAB0278BC7E5D0B86671F720AEC6BB00CBF070C6136BC0ACAC7"
 # Datos del sensor
 TEMPERATURE=25.0
 HUMIDITY=60.0
+TIMESTAMP=$(date +%s)000  # Timestamp en milisegundos
 
 echo "=== Testing ECDSA Signature Validation ==="
 echo ""
@@ -41,6 +42,7 @@ for i in "${!SIGNATURES[@]}"; do
       \"message\": \"$MESSAGE\",
       \"temperature\": $TEMPERATURE,
       \"humidity\": $HUMIDITY,
+      \"timestamp\": $TIMESTAMP,
       \"hash\": \"$HASH\",
       \"signature\": \"${SIGNATURES[$i]}\",
       \"publicKey\": \"$PUB_KEY\"

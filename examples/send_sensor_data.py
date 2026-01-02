@@ -6,6 +6,7 @@ Genera firmas válidas usando secp256k1 y las envía al API
 
 import hashlib
 import requests
+import time
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string
 
@@ -55,7 +56,7 @@ def sign_message(message: str, private_key: SigningKey):
 
 
 def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: float,
-                    hash_hex: str, signature_hex: str, public_key_hex: str):
+                    hash_hex: str, signature_hex: str, public_key_hex: str, timestamp: int):
     """
     Envía los datos firmados al backend
 
@@ -67,6 +68,7 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
         hash_hex: Hash SHA-256 en hexadecimal (64 caracteres)
         signature_hex: Firma ECDSA en hexadecimal (128 caracteres)
         public_key_hex: Clave pública en hexadecimal (128 caracteres)
+        timestamp: Unix timestamp de cuando se tomó la medición (milisegundos)
 
     Returns:
         dict: Respuesta del servidor
@@ -76,6 +78,7 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
         "message": message,
         "temperature": temperature,
         "humidity": humidity,
+        "timestamp": timestamp,
         "hash": hash_hex,
         "signature": signature_hex,
         "publicKey": public_key_hex
@@ -86,6 +89,7 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
     print(f"   Mensaje: {message}")
     print(f"   Temperatura: {temperature}°C")
     print(f"   Humedad: {humidity}%")
+    print(f"   Timestamp: {timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))})")
     print(f"   Hash: {hash_hex[:16]}... ({len(hash_hex)} chars)")
     print(f"   Signature: {signature_hex[:16]}... ({len(signature_hex)} chars)")
     print(f"   PublicKey: {public_key_hex[:16]}... ({len(public_key_hex)} chars)")
@@ -119,16 +123,21 @@ def main():
     # Crear mensaje del sensor (simulando lectura de temperatura y humedad)
     temperature = 23.5
     humidity = 65.2
+
+    # Timestamp de cuando se toma la medición (en milisegundos)
+    timestamp = int(time.time() * 1000)
+
     message = create_sensor_message(SENSOR_ID, temperature, humidity)
 
     print(f"\n📝 Mensaje original: {message}")
+    print(f"⏰ Timestamp de medición: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))}")
 
     # Firmar el mensaje
     hash_hex, signature_hex, public_key_hex = sign_message(message, private_key)
 
     # Enviar al backend con todos los datos
     result = send_to_backend(SENSOR_ID, message, temperature, humidity,
-                            hash_hex, signature_hex, public_key_hex)
+                            hash_hex, signature_hex, public_key_hex, timestamp)
 
     if result and result.get("verified"):
         print("\n✅ Firma verificada exitosamente!")

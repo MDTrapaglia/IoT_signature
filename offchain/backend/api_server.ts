@@ -9,14 +9,15 @@ const ec = new EC('secp256k1'); // Curva secp256k1 (Bitcoin/Ethereum)
 
 interface ArduinoPayload {
   sensor_id: string;
-  temperature?: number;  // Temperatura en °C (opcional)
-  humidity?: number;     // Humedad relativa % (opcional)
-  message: string;       // Mensaje original firmado
-  hash: string;          // SHA-256 hash del mensaje (hex)
-  signature: string;     // Firma ECDSA (r+s, 64 bytes hex)
-  publicKey: string;     // Clave pública (x+y, 64 bytes hex)
-  verified?: boolean;    // Si la firma fue verificada exitosamente
-  timestamp?: number;    // Unix timestamp de cuando se recibió
+  temperature?: number;        // Temperatura en °C (opcional)
+  humidity?: number;           // Humedad relativa % (opcional)
+  message: string;             // Mensaje original firmado
+  hash: string;                // SHA-256 hash del mensaje (hex)
+  signature: string;           // Firma ECDSA (r+s, 64 bytes hex)
+  publicKey: string;           // Clave pública (x+y, 64 bytes hex)
+  timestamp?: number;          // Unix timestamp de cuando se tomó la medición (cliente)
+  verified?: boolean;          // Si la firma fue verificada exitosamente
+  received_timestamp?: number; // Unix timestamp de cuando se recibió (servidor)
 }
 
 // Calcula SHA-256 hash de un mensaje
@@ -133,6 +134,7 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   console.log(`   Mensaje: ${payload.message}`);
   if (payload.temperature !== undefined) console.log(`   Temperatura: ${payload.temperature}°C`);
   if (payload.humidity !== undefined) console.log(`   Humedad: ${payload.humidity}%`);
+  if (payload.timestamp) console.log(`   Timestamp medición: ${new Date(payload.timestamp).toISOString()}`);
   console.log(`   Hash: ${payload.hash.substring(0, 16)}...`);
   console.log(`   Signature: ${payload.signature.substring(0, 16)}...`);
 
@@ -156,7 +158,7 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
     measurementsHistory.push({
       ...payload,
       verified: false,
-      timestamp: Date.now()
+      received_timestamp: Date.now()
     });
 
     // Mantener solo las últimas MAX_MEASUREMENTS mediciones
@@ -177,7 +179,7 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   measurementsHistory.push({
     ...payload,
     verified: true,
-    timestamp: Date.now()
+    received_timestamp: Date.now()
   });
 
   // Mantener solo las últimas MAX_MEASUREMENTS mediciones

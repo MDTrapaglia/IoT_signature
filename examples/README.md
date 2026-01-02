@@ -40,6 +40,7 @@ SENSOR_ID = "PYTHON_SENSOR_001"  # ID de tu sensor
   "message": "sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2",
   "temperature": 23.5,
   "humidity": 65.2,
+  "timestamp": 1735843200000,
   "hash": "ABDD6FCAE1168AAB0278BC7E5D0B86671F720AEC6BB00CBF070C6136BC0ACAC7",
   "signature": "6FA9ADECE1E8BE3CDD34440964F2CF5AEF460480F7A96C75A7367A4B4D1D360A...",
   "publicKey": "D27CBD596D2272C63502D6A186C09D9D8101DD3448CB367E3B28DDF1A9D66E41..."
@@ -52,11 +53,13 @@ SENSOR_ID = "PYTHON_SENSOR_001"  # ID de tu sensor
 🔐 Generando par de claves ECDSA secp256k1...
 
 📝 Mensaje original: sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2
+⏰ Timestamp de medición: 2026-01-02 10:30:45
 
 📤 Enviando datos del sensor PYTHON_SENSOR_001:
    Mensaje: sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2
    Temperatura: 23.5°C
    Humedad: 65.2%
+   Timestamp: 1735843845000 (2026-01-02 10:30:45)
    Hash: ABDD6FCAE1168AAB... (64 chars)
    Signature: 6FA9ADECE1E8BE3C... (128 chars)
    PublicKey: D27CBD596D2272C6... (128 chars)
@@ -78,6 +81,7 @@ El backend espera:
 | `message` | string | variable | ✅ Sí | Mensaje original que se firmó |
 | `temperature` | number | - | ⚪ Opcional | Temperatura en °C |
 | `humidity` | number | - | ⚪ Opcional | Humedad relativa en % |
+| `timestamp` | number | - | ⚪ Opcional | Unix timestamp en ms de cuando se tomó la medición |
 | `hash` | string | 64 chars hex | ✅ Sí | SHA-256 hash del mensaje |
 | `signature` | string | 128 chars hex | ✅ Sí | Firma ECDSA (r\|\|s, 64 bytes) |
 | `publicKey` | string | 128 chars hex | ✅ Sí | Clave pública (x\|\|y, 64 bytes) |
