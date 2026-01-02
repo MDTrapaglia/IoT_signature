@@ -1,5 +1,7 @@
 # Sistema de Certificacion IoT de Datos en Cardano
 
+[![CI/CD Pipeline](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml/badge.svg)](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml)
+
 ## 1. Vision General
 
 El sistema permite capturar mediciones desde un dispositivo ESP32, firmarlas criptograficamente en el origen usando ECDSA (secp256k1) y validarlas en un backend seguro. El usuario final puede visualizar a traves de un Dashboard en tiempo real el estado del sensor, la validez de la firma y los datos certificados.
@@ -118,12 +120,22 @@ interface StoredMeasurement extends ArduinoPayload {
 ### Backend
 
 ```bash
-npm install                # Instalar dependencias
-npm run dev                # Servidor con hot-reload (tsx watch)
-./scripts/backend_start.sh # Iniciar backend (guarda PID en .dev.pid)
-./scripts/backend_stop.sh  # Detener backend por PID
-./scripts/test.sh          # Test basico con curl
+# Desarrollo
+npm install                  # Instalar dependencias
+npm run dev                  # Servidor con hot-reload (tsx watch)
+./scripts/backend_start.sh   # Iniciar backend (guarda PID en .dev.pid)
+./scripts/backend_stop.sh    # Detener backend por PID
+
+# Build y Calidad
+npm run build:backend        # Compilar TypeScript a dist/
+npm run lint:backend         # Linting con ESLint
+npm run lint:fix             # Fix automático de linting
+
+# Testing
+./scripts/test.sh            # Test basico con curl
 ./scripts/test_signatures.sh # Test completo de validacion de firmas
+npm run test                 # Ejecutar todos los tests
+npm run test:integration     # Solo tests de integración
 ```
 
 ### Frontend
@@ -132,10 +144,58 @@ npm run dev                # Servidor con hot-reload (tsx watch)
 cd offchain/frontend
 npm install                  # Instalar dependencias Next.js
 npm run dev                  # Servidor de desarrollo (puerto 3000)
+npm run build                # Build de producción
+npm run lint                 # ESLint para frontend
+
 # O desde el directorio raiz:
 ./scripts/frontend_start.sh  # Iniciar frontend
 ./scripts/frontend_stop.sh   # Detener frontend
 ```
+
+## CI/CD Pipeline
+
+El proyecto incluye automatización completa con GitHub Actions:
+
+### Pipeline de CI (Integración Continua)
+
+Ejecutado automáticamente en cada push o pull request a `main` o `develop`:
+
+- ✅ **Build**: Compilación de backend (TypeScript) y frontend (Next.js)
+- ✅ **Linting**: Verificación de calidad de código con ESLint
+- ✅ **Tests**: Ejecución de tests de API y validación de firmas ECDSA
+- ✅ **Security**: Audit de vulnerabilidades con `npm audit`
+- ✅ **Artifacts**: Generación de builds para deployment
+
+### Pipeline de CD (Deployment Continuo)
+
+Dos opciones de deployment:
+
+1. **Automático**: Se ejecuta en cada push a `main` (preparación de artefactos)
+2. **Manual**: Workflow activable desde GitHub Actions con opciones:
+   - Selección de ambiente (staging/production)
+   - Deployment selectivo (backend/frontend)
+   - Control total del proceso
+
+### Uso del Deployment Manual
+
+```bash
+# Desde la interfaz de GitHub:
+# 1. Ir a Actions → Manual Deployment
+# 2. Click en "Run workflow"
+# 3. Seleccionar:
+#    - Environment: staging o production
+#    - Deploy backend: sí/no
+#    - Deploy frontend: sí/no
+# 4. Confirmar
+```
+
+### Documentación Completa
+
+Ver [`.github/workflows/README.md`](.github/workflows/README.md) para:
+- Configuración de secrets
+- Customización de deployment
+- Troubleshooting
+- Ejemplos de deployment a diferentes plataformas
 
 ## Development
 
