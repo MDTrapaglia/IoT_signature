@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { CheckCircle, XCircle, RefreshCw, Cpu, Hash, Key } from "lucide-react";
 
 interface Measurement {
@@ -20,7 +20,7 @@ export default function Home() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   const ACCESS_TOKEN = process.env.NEXT_PUBLIC_ACCESS_TOKEN || 'gaelito2025';
 
-  const fetchMeasurements = async () => {
+  const fetchMeasurements = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/measurements?token=${ACCESS_TOKEN}`);
       if (!res.ok) throw new Error("Error fetching data");
@@ -34,13 +34,13 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, ACCESS_TOKEN]);
 
   useEffect(() => {
     fetchMeasurements();
     const interval = setInterval(fetchMeasurements, 5000); // Poll every 5s
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMeasurements]);
 
   const truncate = (str: string, len: number = 16) =>
     str.length > len ? str.substring(0, len) + "..." : str;
