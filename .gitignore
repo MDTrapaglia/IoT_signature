@@ -45,3 +45,6 @@ logs/
 result
 result-*
 .devenv/
+
+# Claude Code documentation
+CLAUDE.md
