@@ -35,6 +35,15 @@ jobs:
       - name: Build backend
         run: npm run build:backend
 
+      - name: Verify backend build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist/ directory not found after build"
+            exit 1
+          fi
+          echo "Backend build output verified:"
+          ls -la dist/
+
       - name: Run backend tests
         run: npm run test:backend
         continue-on-error: true
@@ -45,6 +54,7 @@ jobs:
           name: backend-build
           path: dist/
           retention-days: 7
+        if: success()
 
   # Frontend Build & Test
   frontend:
@@ -78,12 +88,22 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3001
           NEXT_PUBLIC_ACCESS_TOKEN: test_token_for_ci
 
+      - name: Verify frontend build output
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "Error: .next directory not found after build"
+            exit 1
+          fi
+          echo "Build output verified:"
+          ls -la .next
+
       - name: Upload frontend artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: offchain/frontend/.next
           retention-days: 7
+        if: success()
 
   # Integration Tests
   integration:
@@ -165,17 +185,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: List available artifacts
+        run: |
+          echo "Workflow run ID: ${{ github.run_id }}"
+          echo "Available artifacts in this workflow run:"
+          gh run view ${{ github.run_id }} --json artifacts --jq '.artifacts[] | "\(.name) - \(.size_in_bytes) bytes"'
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Download backend artifacts
         uses: actions/download-artifact@v4
         with:
           name: backend-build
           path: dist/
+        continue-on-error: false
 
       - name: Download frontend artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend-build/
+        continue-on-error: false
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Verifying backend artifacts:"
+          if [ -d "dist" ]; then
+            ls -la dist/
+          else
+            echo "ERROR: Backend dist/ not found"
+            exit 1
+          fi
+          echo ""
+          echo "Verifying frontend artifacts:"
+          if [ -d "frontend-build" ]; then
+            ls -la frontend-build/
+          else
+            echo "ERROR: Frontend build not found"
+            exit 1
+          fi
 
       - name: Deploy notification
         run: |
