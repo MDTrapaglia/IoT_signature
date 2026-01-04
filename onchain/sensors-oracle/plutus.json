@@ -57,11 +57,60 @@
       ],
       "compiledCode": "5901110101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa00189991192cc004c038006264b30013370e90011bad300c0018acc004c8cc004004dd61807802112cc00400629422b30013375e6020601c6ea8c04000405229462660040046022002806100f44cdc79bae300b0010098a504029164028601a0031640306464660020026eacc038c03cc03cc03cc03c00c896600200300389919912cc004cdc8804001456600266e3c02000a20030064039133005005301300440386eb8c034004dd598070009807800a01c14bd6f7b6301bae300a3008375400260106ea8c0280122c8030c020004c020c024004c020004c010dd5004452689b2b20041",
       "hash": "e659c328b17c189898d2e763c4982a0787ccb1474c096b482ec78594"
+    },
+    {
+      "title": "sensor_validator.sensor_validator.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/sensor_validator~1SensorAction"
+        }
+      },
+      "compiledCode": "5901bb01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144cc8a60026018005300c300d0028acc004c004c024dd5002c4cc896600266e1cdc69bae3001300c3754004902044c96600266e1cdc69bae3001300d3754006904000c4c96600266e1cdc69bae3001300e3754008904000c56600266e212000375a60206022602260226022601c6ea80122b30013371090001b8d375c6020601c6ea801233001375c6002601c6ea80126eb8c00cc038dd50024dd7180118071baa0045da22c80622c80622c80608c040c044c044c0440062c80588c03cc040c0400062c8050c030c028dd5002918069807000c528a01098049baa0054888966002600a003132598009809000c4c966002600e601e6ea8006264646464653001375a602e003375c602e00b375c602e009375c602e007375c602e004911112cc004c07401a01d16406c3017001301600130150013014001301037540031640386022003164040601c6ea80262b30013370e9001000c566002601c6ea802600516403d164030806060106ea8008dc3a400116401830070013003375400f149a26cac80081",
+      "hash": "9cfcfb96aed2f7abcb7f3649e3696733cdc153afa307f63b326e7247"
+    },
+    {
+      "title": "sensor_validator.sensor_validator.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5901bb01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144cc8a60026018005300c300d0028acc004c004c024dd5002c4cc896600266e1cdc69bae3001300c3754004902044c96600266e1cdc69bae3001300d3754006904000c4c96600266e1cdc69bae3001300e3754008904000c56600266e212000375a60206022602260226022601c6ea80122b30013371090001b8d375c6020601c6ea801233001375c6002601c6ea80126eb8c00cc038dd50024dd7180118071baa0045da22c80622c80622c80608c040c044c044c0440062c80588c03cc040c0400062c8050c030c028dd5002918069807000c528a01098049baa0054888966002600a003132598009809000c4c966002600e601e6ea8006264646464653001375a602e003375c602e00b375c602e009375c602e007375c602e004911112cc004c07401a01d16406c3017001301600130150013014001301037540031640386022003164040601c6ea80262b30013370e9001000c566002601c6ea802600516403d164030806060106ea8008dc3a400116401830070013003375400f149a26cac80081",
+      "hash": "9cfcfb96aed2f7abcb7f3649e3696733cdc153afa307f63b326e7247"
+    },
+    {
+      "title": "sensor_validator_simple.sensor_validator_simple.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/sensor_validator_simple~1SensorAction"
+        }
+      },
+      "compiledCode": "59013601010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144cc8a60026018005300c300d0028acc004c004c024dd5002c4ca60026eb8c034c038c038c038c02cdd5000cdd71806980718059baa0019bae300d300e300e300b3754002bb4180618051baa0058a5140213009375400a91112cc004c014006264b300130120018992cc004c01cc03cdd5000c4c8c8c8c8ca60026eb4c05c0066eb8c05c0166eb8c05c0126eb8c05c00e6eb8c05c0092222259800980e803403a2c80d8602e002602c002602a002602800260206ea80062c8070c0440062c8080c038dd5004c56600266e1d20020018acc004c038dd5004c00a2c807a2c806100c0c020dd50011b87480022c8030600e00260066ea801e29344d95900101",
+      "hash": "0404587a41c191f1dc68fd8d29964f353e69d9c62f461518deaf707e"
+    },
+    {
+      "title": "sensor_validator_simple.sensor_validator_simple.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "59013601010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144cc8a60026018005300c300d0028acc004c004c024dd5002c4ca60026eb8c034c038c038c038c02cdd5000cdd71806980718059baa0019bae300d300e300e300b3754002bb4180618051baa0058a5140213009375400a91112cc004c014006264b300130120018992cc004c01cc03cdd5000c4c8c8c8c8ca60026eb4c05c0066eb8c05c0166eb8c05c0126eb8c05c00e6eb8c05c0092222259800980e803403a2c80d8602e002602c002602a002602800260206ea80062c8070c0440062c8080c038dd5004c56600266e1d20020018acc004c038dd5004c00a2c807a2c806100c0c020dd50011b87480022c8030600e00260066ea801e29344d95900101",
+      "hash": "0404587a41c191f1dc68fd8d29964f353e69d9c62f461518deaf707e"
     }
   ],
   "definitions": {
     "ByteArray": {
-      "title": "ByteArray",
       "dataType": "bytes"
     },
     "Data": {
@@ -86,6 +135,118 @@
             },
             {
               "title": "output_index",
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    },
+    "sensor_validator/SensorAction": {
+      "title": "SensorAction",
+      "description": "Redeemer para el validador",
+      "anyOf": [
+        {
+          "title": "SubmitReading",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "reading",
+              "$ref": "#/definitions/sensor_validator~1SensorReading"
+            }
+          ]
+        },
+        {
+          "title": "Delete",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        }
+      ]
+    },
+    "sensor_validator/SensorReading": {
+      "title": "SensorReading",
+      "description": "Datos del sensor firmados por el ESP32",
+      "anyOf": [
+        {
+          "title": "SensorReading",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "sensor_id",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "hash",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "signature",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "public_key",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "timestamp",
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    },
+    "sensor_validator_simple/SensorAction": {
+      "title": "SensorAction",
+      "description": "Redeemer para el validador",
+      "anyOf": [
+        {
+          "title": "SubmitReading",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "reading",
+              "$ref": "#/definitions/sensor_validator_simple~1SensorReading"
+            }
+          ]
+        },
+        {
+          "title": "Delete",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        }
+      ]
+    },
+    "sensor_validator_simple/SensorReading": {
+      "title": "SensorReading",
+      "description": "Datos del sensor firmados por el ESP32",
+      "anyOf": [
+        {
+          "title": "SensorReading",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "sensor_id",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "hash",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "signature",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "public_key",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "timestamp",
               "$ref": "#/definitions/Int"
             }
           ]
