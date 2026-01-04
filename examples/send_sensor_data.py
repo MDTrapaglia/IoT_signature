@@ -3,13 +3,20 @@
 Ejemplo de envío de datos de sensor al backend con firma ECDSA
 Genera firmas válidas usando secp256k1 y las envía al API
 Lee la configuración desde sensor_config.json
+
+IMPORTANTE: Este script usa un formato binario compatible con el validator de Aiken.
+El mensaje se construye ordenando los campos alfabéticamente:
+  - humidity (8 bytes big-endian)
+  - sensor_id (bytes UTF-8)
+  - temperature (8 bytes big-endian)
+  - timestamp (8 bytes big-endian)
 """
 
 import hashlib
 import requests
 import time
 import json
-import os
+import struct
 from pathlib import Path
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string
@@ -34,38 +41,55 @@ def generate_keypair():
     return private_key, public_key
 
 
-def build_message(sensor_id: str, temperature: float = None, humidity: float = None, timestamp: int = None):
+def build_message(sensor_id: str, temperature: int, humidity: int, timestamp: int) -> bytes:
     """
-    Construye el mensaje a partir de los campos ordenados alfabéticamente
-    Debe coincidir con la lógica del backend
+    Construye el mensaje binario ordenando los campos alfabéticamente.
+    Compatible con el validator de Aiken sensor_oracle_verified.ak
+
+    Formato: humidity_bytes || sensor_id || temperature_bytes || timestamp_bytes
+    Los enteros se codifican como 8 bytes big-endian ('>q' = signed 64-bit)
+
+    Args:
+        sensor_id: Identificador del sensor (string UTF-8)
+        temperature: Temperatura * 10 (ej: 23.5°C = 235)
+        humidity: Humedad * 10 (ej: 65.2% = 652)
+        timestamp: Unix timestamp en milisegundos
+
+    Returns:
+        bytes: Mensaje binario listo para hashear
     """
-    fields = {}
+    # Orden alfabético: humidity, sensor_id, temperature, timestamp
 
-    if sensor_id:
-        fields['sensor_id'] = sensor_id
-    if temperature is not None:
-        fields['temperature'] = temperature
-    if humidity is not None:
-        fields['humidity'] = humidity
-    if timestamp is not None:
-        fields['timestamp'] = timestamp
+    message = b''
 
-    # Ordenar las claves alfabéticamente
-    sorted_keys = sorted(fields.keys())
+    # 1. humidity (8 bytes big-endian)
+    message += struct.pack('>q', humidity)
 
-    # Construir el mensaje en formato clave=valor separado por comas
-    return ','.join([f"{key}={fields[key]}" for key in sorted_keys])
+    # 2. sensor_id (UTF-8 bytes)
+    message += sensor_id.encode('utf-8')
+
+    # 3. temperature (8 bytes big-endian)
+    message += struct.pack('>q', temperature)
+
+    # 4. timestamp (8 bytes big-endian)
+    message += struct.pack('>q', timestamp)
+
+    return message
 
 
-def sign_message(message: str, private_key: SigningKey):
+def sign_message(message: bytes, private_key: SigningKey):
     """
-    Firma un mensaje con ECDSA secp256k1
+    Firma un mensaje binario con ECDSA secp256k1
+
+    Args:
+        message: Mensaje binario a firmar
+        private_key: Clave privada ECDSA
 
     Returns:
         tuple: (hash_hex, signature_hex, public_key_hex)
     """
-    # 1. Calcular hash SHA-256 del mensaje
-    hash_bytes = hashlib.sha256(message.encode()).digest()
+    # 1. Calcular hash SHA-256 del mensaje binario
+    hash_bytes = hashlib.sha256(message).digest()
     hash_hex = hash_bytes.hex().upper()
 
     # 2. Firmar el hash con ECDSA
@@ -84,7 +108,7 @@ def sign_message(message: str, private_key: SigningKey):
     return hash_hex, signature_hex, public_key_hex
 
 
-def send_to_backend(config: dict, sensor_id: str, message: str, temperature: float, humidity: float,
+def send_to_backend(config: dict, sensor_id: str, message: bytes, temperature: int, humidity: int,
                     hash_hex: str, signature_hex: str, public_key_hex: str, timestamp: int):
     """
     Envía los datos firmados al backend
@@ -92,9 +116,9 @@ def send_to_backend(config: dict, sensor_id: str, message: str, temperature: flo
     Args:
         config: Configuración cargada desde JSON (backend_url, access_token)
         sensor_id: Identificador del sensor
-        message: Mensaje construido para debug
-        temperature: Temperatura en °C
-        humidity: Humedad relativa en %
+        message: Mensaje binario construido para debug
+        temperature: Temperatura * 10 (ej: 23.5°C = 235)
+        humidity: Humedad * 10 (ej: 65.2% = 652)
         hash_hex: Hash SHA-256 en hexadecimal (64 caracteres)
         signature_hex: Firma ECDSA en hexadecimal (128 caracteres)
         public_key_hex: Clave pública en hexadecimal (128 caracteres)
@@ -115,9 +139,9 @@ def send_to_backend(config: dict, sensor_id: str, message: str, temperature: flo
 
     # Mostrar información de debug
     print(f"📤 Enviando datos del sensor {sensor_id}:")
-    print(f"   Mensaje construido: {message}")
-    print(f"   Temperatura: {temperature}°C")
-    print(f"   Humedad: {humidity}%")
+    print(f"   Mensaje binario: {message.hex()[:32]}... ({len(message)} bytes)")
+    print(f"   Temperatura: {temperature/10}°C (raw: {temperature})")
+    print(f"   Humedad: {humidity/10}% (raw: {humidity})")
     print(f"   Timestamp: {timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))})")
     print(f"   Hash: {hash_hex[:16]}... ({len(hash_hex)} chars)")
     print(f"   Signature: {signature_hex[:16]}... ({len(signature_hex)} chars)")
@@ -160,19 +184,24 @@ def main():
 
     # Obtener datos del sensor desde la configuración
     sensor_id = config['sensor_id']
-    temperature = config['sensor_data'].get('temperature')
-    humidity = config['sensor_data'].get('humidity')
+    temperature_raw = config['sensor_data'].get('temperature')  # Ej: 23.5
+    humidity_raw = config['sensor_data'].get('humidity')  # Ej: 65.2
+
+    # Convertir a enteros multiplicados por 10 (formato compatible con Aiken)
+    temperature = int(temperature_raw * 10)  # 23.5 -> 235
+    humidity = int(humidity_raw * 10)  # 65.2 -> 652
 
     # Timestamp de cuando se toma la medición (en milisegundos)
     timestamp = int(time.time() * 1000)
 
-    # Construir mensaje con campos ordenados alfabéticamente
+    # Construir mensaje binario con campos ordenados alfabéticamente
     message = build_message(sensor_id, temperature, humidity, timestamp)
 
-    print(f"\n📝 Mensaje construido: {message}")
+    print(f"\n📝 Mensaje binario construido ({len(message)} bytes):")
+    print(f"   Hex: {message.hex()}")
     print(f"⏰ Timestamp de medición: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))}")
-    print(f"🌡️  Temperatura: {temperature}°C")
-    print(f"💧 Humedad: {humidity}%")
+    print(f"🌡️  Temperatura: {temperature_raw}°C (raw: {temperature})")
+    print(f"💧 Humedad: {humidity_raw}% (raw: {humidity})")
 
     # Firmar el mensaje
     hash_hex, signature_hex, public_key_hex = sign_message(message, private_key)
