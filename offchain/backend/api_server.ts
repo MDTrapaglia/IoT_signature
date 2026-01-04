@@ -11,13 +11,30 @@ interface ArduinoPayload {
   sensor_id: string;
   temperature?: number;        // Temperatura en °C (opcional)
   humidity?: number;           // Humedad relativa % (opcional)
-  message: string;             // Mensaje original firmado
+  message?: string;            // Mensaje original firmado (opcional, se construye automáticamente)
   hash: string;                // SHA-256 hash del mensaje (hex)
   signature: string;           // Firma ECDSA (r+s, 64 bytes hex)
   publicKey: string;           // Clave pública (x+y, 64 bytes hex)
   timestamp?: number;          // Unix timestamp de cuando se tomó la medición (cliente)
   verified?: boolean;          // Si la firma fue verificada exitosamente
   received_timestamp?: number; // Unix timestamp de cuando se recibió (servidor)
+}
+
+// Construye el mensaje a partir de los campos ordenados alfabéticamente
+function buildMessage(payload: ArduinoPayload): string {
+  const fields: { [key: string]: string | number } = {};
+
+  // Agregar solo los campos que existen
+  if (payload.sensor_id) fields.sensor_id = payload.sensor_id;
+  if (payload.temperature !== undefined) fields.temperature = payload.temperature;
+  if (payload.humidity !== undefined) fields.humidity = payload.humidity;
+  if (payload.timestamp !== undefined) fields.timestamp = payload.timestamp;
+
+  // Ordenar las claves alfabéticamente
+  const sortedKeys = Object.keys(fields).sort();
+
+  // Construir el mensaje en formato clave=valor separado por comas
+  return sortedKeys.map(key => `${key}=${fields[key]}`).join(',');
 }
 
 // Calcula SHA-256 hash de un mensaje
@@ -111,8 +128,8 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
-  if (!payload.signature || !payload.hash || !payload.publicKey || !payload.sensor_id || !payload.message) {
-    return res.status(400).json({ error: "Faltan datos requeridos (sensor_id, message, hash, signature, publicKey)" });
+  if (!payload.signature || !payload.hash || !payload.publicKey || !payload.sensor_id) {
+    return res.status(400).json({ error: "Faltan datos requeridos (sensor_id, hash, signature, publicKey)" });
   }
 
   // Validar formato hexadecimal
@@ -130,21 +147,30 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
     return res.status(400).json({ error: "PublicKey inválida (debe ser 128 caracteres hex)" });
   }
 
+  // Construir mensaje a partir de los campos (ordenados alfabéticamente)
+  const message = payload.message || buildMessage(payload);
+
   console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}`);
-  console.log(`   Mensaje: ${payload.message}`);
+  console.log(`   Mensaje construido: ${message}`);
   if (payload.temperature !== undefined) console.log(`   Temperatura: ${payload.temperature}°C`);
   if (payload.humidity !== undefined) console.log(`   Humedad: ${payload.humidity}%`);
   if (payload.timestamp) console.log(`   Timestamp medición: ${new Date(payload.timestamp).toISOString()}`);
-  console.log(`   Hash: ${payload.hash.substring(0, 16)}...`);
+  console.log(`   Hash provisto: ${payload.hash.substring(0, 16)}...`);
   console.log(`   Signature: ${payload.signature.substring(0, 16)}...`);
 
   // Verificar que el hash corresponda al mensaje
-  if (!verifyHash(payload.message, payload.hash)) {
+  if (!verifyHash(message, payload.hash)) {
+    const calculatedHash = calculateHash(message);
     console.log(`❌ Hash no corresponde al mensaje para sensor ${payload.sensor_id}`);
+    console.log(`   Hash calculado: ${calculatedHash.substring(0, 16)}...`);
+    console.log(`   Hash provisto:  ${payload.hash.substring(0, 16)}...`);
     return res.status(400).json({
       status: "error",
       error: "El hash no corresponde al mensaje proporcionado",
-      verified: false
+      verified: false,
+      expected_hash: calculatedHash,
+      provided_hash: payload.hash,
+      message: message
     });
   }
 
@@ -157,6 +183,7 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
     // Guardar medición con verified: false
     measurementsHistory.push({
       ...payload,
+      message, // Incluir el mensaje construido
       verified: false,
       received_timestamp: Date.now()
     });
@@ -178,6 +205,7 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   // Agregar nueva medición con verified: true
   measurementsHistory.push({
     ...payload,
+    message, // Incluir el mensaje construido
     verified: true,
     received_timestamp: Date.now()
   });

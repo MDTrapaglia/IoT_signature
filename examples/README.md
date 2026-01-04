@@ -18,26 +18,32 @@ python send_sensor_data.py
 
 ### Configuración
 
-Edita las siguientes variables en el script según tu entorno:
+Crea un archivo `sensor_config.json` en el directorio `examples/`:
 
-```python
-BACKEND_URL = "http://192.168.100.200:3001"  # URL de tu backend
-ACCESS_TOKEN = "c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885"  # Token de acceso
-SENSOR_ID = "PYTHON_SENSOR_001"  # ID de tu sensor
+```json
+{
+  "backend_url": "http://192.168.100.200:3001",
+  "access_token": "c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885",
+  "sensor_id": "PYTHON_SENSOR_001",
+  "sensor_data": {
+    "temperature": 23.5,
+    "humidity": 65.2
+  }
+}
 ```
 
 ### Qué hace el script
 
-1. **Genera un par de claves ECDSA** (secp256k1) - misma curva que Bitcoin/Ethereum
-2. **Crea un mensaje de sensor** simulado con temperatura y humedad
-3. **Calcula el hash SHA-256** del mensaje
-4. **Firma el hash** con la clave privada ECDSA
-5. **Envía al backend** vía POST `/api/ingest` con el formato completo:
+1. **Carga la configuración** desde `sensor_config.json`
+2. **Genera un par de claves ECDSA** (secp256k1) - misma curva que Bitcoin/Ethereum
+3. **Construye el mensaje** ordenando campos alfabéticamente: `humidity=65.2,sensor_id=PYTHON_SENSOR_001,temperature=23.5,timestamp=1735843200000`
+4. **Calcula el hash SHA-256** del mensaje construido
+5. **Firma el hash** con la clave privada ECDSA
+6. **Envía al backend** vía POST `/api/ingest` (el backend reconstruye el mensaje para validar):
 
 ```json
 {
   "sensor_id": "PYTHON_SENSOR_001",
-  "message": "sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2",
   "temperature": 23.5,
   "humidity": 65.2,
   "timestamp": 1735843200000,
@@ -47,16 +53,21 @@ SENSOR_ID = "PYTHON_SENSOR_001"  # ID de tu sensor
 }
 ```
 
+**Nota:** El campo `message` ya NO es necesario. El backend lo construye automáticamente ordenando los campos alfabéticamente.
+
 ### Salida esperada
 
 ```
+📄 Cargando configuración desde sensor_config.json...
 🔐 Generando par de claves ECDSA secp256k1...
 
-📝 Mensaje original: sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2
+📝 Mensaje construido: humidity=65.2,sensor_id=PYTHON_SENSOR_001,temperature=23.5,timestamp=1735843845000
 ⏰ Timestamp de medición: 2026-01-02 10:30:45
+🌡️  Temperatura: 23.5°C
+💧 Humedad: 65.2%
 
 📤 Enviando datos del sensor PYTHON_SENSOR_001:
-   Mensaje: sensor_id=PYTHON_SENSOR_001,temp=23.5,humidity=65.2
+   Mensaje construido: humidity=65.2,sensor_id=PYTHON_SENSOR_001,temperature=23.5,timestamp=1735843845000
    Temperatura: 23.5°C
    Humedad: 65.2%
    Timestamp: 1735843845000 (2026-01-02 10:30:45)
@@ -78,11 +89,10 @@ El backend espera:
 | Campo | Tipo | Longitud | Requerido | Descripción |
 |-------|------|----------|-----------|-------------|
 | `sensor_id` | string | variable | ✅ Sí | Identificador único del sensor |
-| `message` | string | variable | ✅ Sí | Mensaje original que se firmó |
 | `temperature` | number | - | ⚪ Opcional | Temperatura en °C |
 | `humidity` | number | - | ⚪ Opcional | Humedad relativa en % |
 | `timestamp` | number | - | ⚪ Opcional | Unix timestamp en ms de cuando se tomó la medición |
-| `hash` | string | 64 chars hex | ✅ Sí | SHA-256 hash del mensaje |
+| `hash` | string | 64 chars hex | ✅ Sí | SHA-256 hash del mensaje construido |
 | `signature` | string | 128 chars hex | ✅ Sí | Firma ECDSA (r\|\|s, 64 bytes) |
 | `publicKey` | string | 128 chars hex | ✅ Sí | Clave pública (x\|\|y, 64 bytes) |
 
@@ -95,11 +105,15 @@ El backend requiere autenticación por token:
 
 ### Validaciones del Backend
 
-Ver `offchain/backend/api_server.ts:113-147`:
+Ver `offchain/backend/api_server.ts`:
 
-- **message**: Campo requerido, el backend verifica que `hash == SHA256(message)`
+- **sensor_id**: Campo requerido
 - **hash**: Exactamente 64 caracteres hexadecimales (SHA-256)
 - **signature**: Exactamente 128 caracteres hexadecimales (r||s, 64 bytes)
 - **publicKey**: Exactamente 128 caracteres hexadecimales (x||y, 64 bytes)
-- **temperature/humidity**: Campos opcionales, se almacenan si se proporcionan
-- El backend valida que el hash corresponda al mensaje antes de verificar la firma
+- **temperature/humidity/timestamp**: Campos opcionales, se almacenan si se proporcionan
+- El backend **construye el mensaje automáticamente** ordenando los campos alfabéticamente
+- El formato del mensaje construido es: `campo1=valor1,campo2=valor2,...`
+- Valida que el hash corresponda al mensaje construido antes de verificar la firma ECDSA
+
+**Importante:** El cliente debe construir el mensaje con los campos en **orden alfabético** para que el hash coincida con el del backend.

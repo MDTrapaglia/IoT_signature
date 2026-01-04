@@ -2,18 +2,29 @@
 """
 Ejemplo de envío de datos de sensor al backend con firma ECDSA
 Genera firmas válidas usando secp256k1 y las envía al API
+Lee la configuración desde sensor_config.json
 """
 
 import hashlib
 import requests
 import time
+import json
+import os
+from pathlib import Path
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string
 
-# Configuración del backend
-BACKEND_URL = "http://192.168.100.200:3001"  # Cambia por tu IP/puerto
-ACCESS_TOKEN = "c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885"
-SENSOR_ID = "PYTHON_SENSOR_001"
+
+def load_config(config_path: str = "sensor_config.json"):
+    """Carga la configuración desde un archivo JSON"""
+    script_dir = Path(__file__).parent
+    config_file = script_dir / config_path
+
+    if not config_file.exists():
+        raise FileNotFoundError(f"Archivo de configuración no encontrado: {config_file}")
+
+    with open(config_file, 'r') as f:
+        return json.load(f)
 
 
 def generate_keypair():
@@ -23,9 +34,27 @@ def generate_keypair():
     return private_key, public_key
 
 
-def create_sensor_message(sensor_id: str, temperature: float, humidity: float):
-    """Crea un mensaje de sensor simulado"""
-    return f"sensor_id={sensor_id},temp={temperature},humidity={humidity}"
+def build_message(sensor_id: str, temperature: float = None, humidity: float = None, timestamp: int = None):
+    """
+    Construye el mensaje a partir de los campos ordenados alfabéticamente
+    Debe coincidir con la lógica del backend
+    """
+    fields = {}
+
+    if sensor_id:
+        fields['sensor_id'] = sensor_id
+    if temperature is not None:
+        fields['temperature'] = temperature
+    if humidity is not None:
+        fields['humidity'] = humidity
+    if timestamp is not None:
+        fields['timestamp'] = timestamp
+
+    # Ordenar las claves alfabéticamente
+    sorted_keys = sorted(fields.keys())
+
+    # Construir el mensaje en formato clave=valor separado por comas
+    return ','.join([f"{key}={fields[key]}" for key in sorted_keys])
 
 
 def sign_message(message: str, private_key: SigningKey):
@@ -55,14 +84,15 @@ def sign_message(message: str, private_key: SigningKey):
     return hash_hex, signature_hex, public_key_hex
 
 
-def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: float,
+def send_to_backend(config: dict, sensor_id: str, message: str, temperature: float, humidity: float,
                     hash_hex: str, signature_hex: str, public_key_hex: str, timestamp: int):
     """
     Envía los datos firmados al backend
 
     Args:
+        config: Configuración cargada desde JSON (backend_url, access_token)
         sensor_id: Identificador del sensor
-        message: Mensaje original que se firmó
+        message: Mensaje construido para debug
         temperature: Temperatura en °C
         humidity: Humedad relativa en %
         hash_hex: Hash SHA-256 en hexadecimal (64 caracteres)
@@ -75,7 +105,6 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
     """
     payload = {
         "sensor_id": sensor_id,
-        "message": message,
         "temperature": temperature,
         "humidity": humidity,
         "timestamp": timestamp,
@@ -86,7 +115,7 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
 
     # Mostrar información de debug
     print(f"📤 Enviando datos del sensor {sensor_id}:")
-    print(f"   Mensaje: {message}")
+    print(f"   Mensaje construido: {message}")
     print(f"   Temperatura: {temperature}°C")
     print(f"   Humedad: {humidity}%")
     print(f"   Timestamp: {timestamp} ({time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))})")
@@ -95,10 +124,10 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
     print(f"   PublicKey: {public_key_hex[:16]}... ({len(public_key_hex)} chars)")
 
     # Enviar petición POST
-    url = f"{BACKEND_URL}/api/ingest"
+    url = f"{config['backend_url']}/api/ingest"
     headers = {
         "Content-Type": "application/json",
-        "x-access-token": ACCESS_TOKEN
+        "x-access-token": config['access_token']
     }
 
     try:
@@ -117,26 +146,39 @@ def send_to_backend(sensor_id: str, message: str, temperature: float, humidity: 
 def main():
     """Ejemplo completo: generar firma y enviar al backend"""
 
+    # Cargar configuración desde JSON
+    print("📄 Cargando configuración desde sensor_config.json...")
+    try:
+        config = load_config()
+    except FileNotFoundError as e:
+        print(f"❌ {e}")
+        print("   Crea el archivo 'sensor_config.json' en el directorio examples/")
+        return
+
     print("🔐 Generando par de claves ECDSA secp256k1...")
     private_key, public_key = generate_keypair()
 
-    # Crear mensaje del sensor (simulando lectura de temperatura y humedad)
-    temperature = 23.5
-    humidity = 65.2
+    # Obtener datos del sensor desde la configuración
+    sensor_id = config['sensor_id']
+    temperature = config['sensor_data'].get('temperature')
+    humidity = config['sensor_data'].get('humidity')
 
     # Timestamp de cuando se toma la medición (en milisegundos)
     timestamp = int(time.time() * 1000)
 
-    message = create_sensor_message(SENSOR_ID, temperature, humidity)
+    # Construir mensaje con campos ordenados alfabéticamente
+    message = build_message(sensor_id, temperature, humidity, timestamp)
 
-    print(f"\n📝 Mensaje original: {message}")
+    print(f"\n📝 Mensaje construido: {message}")
     print(f"⏰ Timestamp de medición: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))}")
+    print(f"🌡️  Temperatura: {temperature}°C")
+    print(f"💧 Humedad: {humidity}%")
 
     # Firmar el mensaje
     hash_hex, signature_hex, public_key_hex = sign_message(message, private_key)
 
     # Enviar al backend con todos los datos
-    result = send_to_backend(SENSOR_ID, message, temperature, humidity,
+    result = send_to_backend(config, sensor_id, message, temperature, humidity,
                             hash_hex, signature_hex, public_key_hex, timestamp)
 
     if result and result.get("verified"):
