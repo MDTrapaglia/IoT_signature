@@ -23,13 +23,17 @@ pub type OracleRedeemer {
   Delete
 }
 
-// Oracle's Datum
-type Rate =
-  Int
+// Oracle's Datum - Sensor measurement data
+pub type SensorData {
+  sensor_id: ByteArray,
+  temperature: Int,  // Temperature * 10 (e.g., 23.5°C = 235)
+  humidity: Int,     // Humidity * 10 (e.g., 65.2% = 652)
+  timestamp: Int,    // Unix timestamp (POSIX time)
+}
 
 validator oracle(params: OracleParams) {
   spend(
-    _datum: Option<Rate>,
+    _datum: Option<SensorData>,
     redeemer: OracleRedeemer,
     utxo_ref: OutputReference,
     tx: Transaction,
@@ -73,8 +77,12 @@ validator oracle(params: OracleParams) {
             NoDatum -> fail @"Datum required"
             DatumHash(_) -> fail @"Datum should be inline"
             InlineDatum(d) -> {
-              // Fail if the datum is not an integer
-              expect _rate: Rate = d
+              // Fail if the datum is not valid sensor data
+              expect sensor_data: SensorData = d
+              // Validate sensor data ranges
+              expect sensor_data.temperature >= -500 && sensor_data.temperature <= 1000  // -50°C to 100°C
+              expect sensor_data.humidity >= 0 && sensor_data.humidity <= 1000  // 0% to 100%
+              expect sensor_data.timestamp > 0
               True
             }
           }
