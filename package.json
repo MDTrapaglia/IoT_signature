@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "tsx watch offchain/backend/api_server.ts",
     "demo": "tsx watch offchain/transactions/transaction.ts",
+    "self": "tsx watch offchain/transactions/self_send.ts",
     "nft": "tsx offchain/transactions/mint_nft.ts",
+    "oracle:mint-nft": "tsx offchain/transactions/mint_sensor_nft.ts",
+    "oracle:create": "tsx offchain/transactions/create_oracle.ts",
+    "oracle:update": "tsx offchain/transactions/update_oracle.ts",
     "build:backend": "tsc --project tsconfig.json --outDir dist",
     "lint:backend": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts",
     "lint:fix": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts --fix",

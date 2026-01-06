@@ -2,7 +2,7 @@ import { BlockfrostProvider, MeshWallet, MeshTxBuilder } from "@meshsdk/core"
 import dotenv from "dotenv"
 dotenv.config()
 
-//console.log(MeshWallet.brew(true))
+// console.log(MeshWallet.brew(true))
 
 const blockchainProvider = new BlockfrostProvider(process.env.BLOCKFROST_API_KEY || "")
 
@@ -18,7 +18,7 @@ const wallet = new MeshWallet({
 
 async function transfer() {
     const walletAddr = await wallet.getChangeAddress();
-    //console.log("walletAddr: ", walletAddr)
+    console.log("walletAddr: ", walletAddr)
     const utxos = await wallet.getUtxos()
     console.log("Utxos: ", utxos)
     console.dir(utxos, {depth: null, colors: true})

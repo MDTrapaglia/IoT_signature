@@ -1,0 +1,9 @@
+{
+  "backend_url": "http://192.168.100.200:3001",
+  "access_token": "c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885",
+  "sensor_id": "PYTHON_SENSOR_001",
+  "sensor_data": {
+    "temperature": 23.5,
+    "humidity": 65.2
+  }
+}

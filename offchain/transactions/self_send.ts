@@ -39,8 +39,8 @@ async function transfer() {
 
     const signedTx = await wallet.signTx(unsignedTx)
 
-    //const txHash = await wallet.submitTx(signedTx)
-    //console.log("txHash: ", txHash)
+    const txHash = await wallet.submitTx(signedTx)
+    console.log("txHash: ", txHash)
 }
 transfer()
 console.log("Ready")

@@ -40,6 +40,9 @@ Thumbs.db
 logs/
 *.log
 
+# Temporary files
+docs/temp/
+
 # Nix
 .direnv/
 result
