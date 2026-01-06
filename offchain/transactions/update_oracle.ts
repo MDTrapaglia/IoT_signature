@@ -8,7 +8,8 @@ import {
     type PlutusScript,
     mConStr0,
     serializePlutusScript,
-    deserializeAddress
+    deserializeAddress,
+    byteString
 } from "@meshsdk/core"
 import dotenv from "dotenv"
 dotenv.config()
@@ -17,6 +18,8 @@ const blockchainProvider = new BlockfrostProvider(process.env.BLOCKFROST_API_KEY
 
 const txBuilder = new MeshTxBuilder({
     fetcher: blockchainProvider,
+    submitter: blockchainProvider,
+    evaluator: blockchainProvider,
     verbose: true
 })
 
@@ -114,14 +117,25 @@ async function updateOracle(
         throw new Error("Oracle UTXO not found. Make sure the oracle was created first.");
     }
 
+    // Leer el datum actual del UTXO (inline datum)
+    const currentDatum = oracleUtxo.output.plutusData;
+    if (!currentDatum) {
+        throw new Error("Oracle UTXO does not have inline datum");
+    }
+
+    console.log("\\n📋 Current Datum (from UTXO):");
+    console.log("  Type:", typeof currentDatum);
+    console.log("  Value:", JSON.stringify(currentDatum, null, 2));
+
     // Construir el nuevo datum con los datos actualizados del sensor
+    // IMPORTANTE: signature y public_key deben ser ByteArrays, no strings
     const newDatum = mConStr0([
         newSensorData.sensor_id,
         newSensorData.temperature,
         newSensorData.humidity,
-        newSensorData.timestamp,
-        newSensorData.signature,
-        newSensorData.public_key
+        newSensorData.timestamp,  // Mantener como number
+        byteString(newSensorData.signature),  // Convertir hex string a ByteArray
+        byteString(newSensorData.public_key)  // Convertir hex string a ByteArray
     ]);
 
     // Redeemer: Update (constructor 0)
@@ -139,6 +153,8 @@ async function updateOracle(
     const nftUnit = `${nftPolicyId}${nftAssetName}`;
 
     const unsignedTx = await txBuilder
+        // Spending Plutus V3 script - debe ir PRIMERO
+        .spendingPlutusScriptV3()
         // Input: consume oracle UTXO
         .txIn(
             oracleUtxo.input.txHash,
@@ -146,8 +162,8 @@ async function updateOracle(
             oracleUtxo.output.amount,
             oracleScriptAddr
         )
-        .spendingPlutusScriptV3()
         .txInScript(oracleScript.code)
+        .txInInlineDatumPresent()  // Indica que el datum está inline en el UTXO
         .txInRedeemerValue(redeemer)
         // Output: nuevo UTXO del oracle con datum actualizado
         .txOut(oracleScriptAddr, [
@@ -155,15 +171,15 @@ async function updateOracle(
             { unit: nftUnit, quantity: "1" }
         ])
         .txOutInlineDatumValue(newDatum)
-        // Required signatories: el operador debe firmar
-        .requiredSignerHash(operatorPubKeyHash)
-        // Collateral
+        // Collateral para script execution
         .txInCollateral(
             collateral[0].input.txHash,
             collateral[0].input.outputIndex,
             collateral[0].output.amount,
             collateral[0].output.address
         )
+        // Required signatories: el operador debe firmar
+        .requiredSignerHash(operatorPubKeyHash)
         .changeAddress(walletAddr)
         .selectUtxosFrom(utxos)
         .complete();
@@ -194,30 +210,42 @@ async function main() {
     console.log("=".repeat(60))
     console.log(`Will perform ${numUpdates} updates\n`)
 
-    // Datos de ejemplo con diferentes firmas del test_payloads.json
-    const signatures = [
-        "6FA9ADECE1E8BE3CDD34440964F2CF5AEF460480F7A96C75A7367A4B4D1D360ABE20856DE311EB357337B896A0C137295FB8F5223F65AEEC33275DC9E3AED9D2",
-        "A4B333E09816BFD4AF040C1245BC61DF335A109A23EDF760D22641DCC06554A17BD74CC5DA223CEA1693931E7624462268DB0466B11D9461FD4BA3B98703BC61",
-        "F1D8BDEF68171A6990231E40DD583F19D667E6C2E585E44FE42E7237F36AE0CEF2237AF9CD87889934A4C28D9397DA54946E88C40B2E3E8F3B54FAD4273111DE",
-        "E3FFF6392F74522740B23853417731F91D026CE1A8556514CED85E90ADB2B13EEFAE85BAEDE00EA8185DE10B717584FF50A02548F4320700DC0D4699906DC033"
+    // IMPORTANTE: Datos fijos que corresponden a las firmas válidas del ESP32
+    // Las firmas ECDSA son específicas para cada combinación de datos
+    // Estas firmas fueron generadas usando examples/generate_test_data.py
+    const testData: SensorData[] = [
+        {
+            sensor_id: "ESP32_001",
+            temperature: 235,    // 23.5°C
+            humidity: 652,       // 65.2%
+            timestamp: 1767720964446,
+            signature: "98C72ABF5BBA1CF58B561EBF206172A073D7F1D051B8016F06E5EFC0BF9CD760CE2D4E3350678EF1D588A3EFF266D9187CC65249E0CE5C647292B9D2874391EA",
+            public_key: "70F655FB1D07117545A53C35763B09123F5885300BBC23EAFFFC5C19E882B578E4D07174066908503E24847F66F5758D01BD903C1A2A3B3AC375BBFAF4A94614"
+        },
+        {
+            sensor_id: "ESP32_001",
+            temperature: 240,    // 24.0°C
+            humidity: 680,       // 68.0%
+            timestamp: 1767721064446,
+            signature: "CAA59D5AB7E18FD2F0C59B8EED32C09A9F0A1DA630031D9BA7CBE45BC6CBD0485733B93605B4C93714D0CBDE8F8470676965458A51EC1DF1F75C6AD66A3D1AB3",
+            public_key: "70F655FB1D07117545A53C35763B09123F5885300BBC23EAFFFC5C19E882B578E4D07174066908503E24847F66F5758D01BD903C1A2A3B3AC375BBFAF4A94614"
+        },
+        {
+            sensor_id: "ESP32_001",
+            temperature: 225,    // 22.5°C
+            humidity: 620,       // 62.0%
+            timestamp: 1767721164446,
+            signature: "584A0FCF7F76370655A085D98B20814959533E472695A40D141D48440D7A0C936718BD42D1074B7CFC15F846E3C1DCDE5BFFDFC1D36B71ECB38F6773500C0E46",
+            public_key: "70F655FB1D07117545A53C35763B09123F5885300BBC23EAFFFC5C19E882B578E4D07174066908503E24847F66F5758D01BD903C1A2A3B3AC375BBFAF4A94614"
+        }
     ];
 
-    const publicKey = "D27CBD596D2272C63502D6A186C09D9D8101DD3448CB367E3B28DDF1A9D66E4140D3C4D11DF201EB1E6E512054414B49B82B13024A1202D0DAC8FB4253E988E8";
-
-    for (let i = 0; i < numUpdates; i++) {
+    for (let i = 0; i < Math.min(numUpdates, testData.length); i++) {
         console.log(`\n${"=".repeat(60)}`)
         console.log(`Update ${i + 1} of ${numUpdates}`)
         console.log("=".repeat(60))
 
-        // Simular diferentes lecturas del sensor
-        const sensorData: SensorData = {
-            sensor_id: "ESP32_001",
-            temperature: 200 + Math.floor(Math.random() * 100), // 20.0°C - 30.0°C
-            humidity: 500 + Math.floor(Math.random() * 300),     // 50.0% - 80.0%
-            timestamp: Date.now(),
-            signature: signatures[i % signatures.length],
-            public_key: publicKey
-        };
+        const sensorData = testData[i];
 
         try {
             const txHash = await updateOracle(wallet, nftPolicyId, nftAssetName, sensorData);

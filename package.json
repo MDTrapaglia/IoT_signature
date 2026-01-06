@@ -11,6 +11,7 @@
     "oracle:mint-nft": "tsx offchain/transactions/mint_sensor_nft.ts",
     "oracle:create": "tsx offchain/transactions/create_oracle.ts",
     "oracle:update": "tsx offchain/transactions/update_oracle.ts",
+    "test:ecdsa": "tsx offchain/transactions/test_ecdsa_onchain.ts",
     "build:backend": "tsc --project tsconfig.json --outDir dist",
     "lint:backend": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts",
     "lint:fix": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts --fix",
