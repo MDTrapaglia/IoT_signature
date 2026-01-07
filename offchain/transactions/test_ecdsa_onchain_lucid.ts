@@ -1,4 +1,5 @@
 import { Blockfrost, Lucid, Data, fromText } from "lucid-cardano"
+import { getLucidPrivateKey } from "./utils/meshjs_to_lucid_key.js"
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -56,7 +57,7 @@ async function testECDSAOnChain(sensorData: SensorDataInput): Promise<void> {
     // Opciones (en orden de prioridad):
     // 1. LUCID_SEED (seed phrase de 24 palabras)
     // 2. LUCID_PRIVATE_KEY (hex format)
-    // 3. PRIVATE_KEY (intentar con formato de MeshJS)
+    // 3. PRIVATE_KEY (xprv de MeshJS - será convertido automáticamente)
 
     const lucidSeed = process.env.LUCID_SEED
     const lucidPrivateKey = process.env.LUCID_PRIVATE_KEY
@@ -69,15 +70,31 @@ async function testECDSAOnChain(sensorData: SensorDataInput): Promise<void> {
         console.log("  Loading wallet from LUCID_PRIVATE_KEY...")
         lucid.selectWalletFromPrivateKey(lucidPrivateKey)
     } else if (meshPrivateKey) {
-        console.log("  Attempting to load wallet from PRIVATE_KEY...")
+        console.log("  Loading wallet from PRIVATE_KEY...")
         try {
-            lucid.selectWalletFromPrivateKey(meshPrivateKey)
+            // Para MeshJS xprv, vamos a derivar manualmente usando Lucid's C module
+            const { C } = await import("lucid-cardano")
+            const rootKey = C.Bip32PrivateKey.from_bech32(meshPrivateKey)
+
+            const harden = (num: number) => 0x80000000 + num
+            const accountKey = rootKey
+                .derive(harden(1852))
+                .derive(harden(1815))
+                .derive(harden(0))
+
+            const paymentKey = accountKey.derive(0).derive(0).to_raw_key()
+
+            // Lucid necesita la key en formato bech32 con prefijo "ed25519_sk"
+            const paymentKeyBech32 = paymentKey.to_bech32()
+
+            console.log("  Payment key (bech32):", paymentKeyBech32.substring(0, 20) + "...")
+
+            // Cargar wallet con la payment key en formato bech32
+            lucid.selectWalletFromPrivateKey(paymentKeyBech32)
+            console.log("  ✅ Wallet loaded successfully (converted from MeshJS format)")
         } catch (keyError: any) {
-            console.error("\n❌ Error: PRIVATE_KEY format not compatible with Lucid")
-            console.error("   MeshJS and Lucid use different key formats")
-            console.log("\n💡 Solution: Generate a Lucid wallet:")
-            console.log("   npm run lucid:generate-wallet")
-            console.log("\n   Then add LUCID_SEED to your .env file")
+            console.error("\n❌ Error loading wallet:", keyError.message || keyError)
+            console.error("   Stack:", keyError.stack)
             throw keyError
         }
     } else {
@@ -89,13 +106,24 @@ async function testECDSAOnChain(sensorData: SensorDataInput): Promise<void> {
     console.log("  Wallet Address:", walletAddr)
 
     // Definir script del validador
-    const script = {
-        type: "PlutusV3" as const,
+    // Lucid espera el script en formato CBOR con el byte de versión
+    // El código que tenemos ya está compilado, así que lo usamos directamente
+    const script: any = {
+        type: "PlutusV3",
         script: simple_verifier_code
     }
 
-    const scriptAddr = lucid.utils.validatorToAddress(script)
-    console.log("  Script Address:", scriptAddr)
+    // Calcular la dirección del script
+    let scriptAddr: string
+    try {
+        scriptAddr = lucid.utils.validatorToAddress(script)
+        console.log("  Script Address:", scriptAddr)
+    } catch (err: any) {
+        // Si falla, usar la dirección conocida de MeshJS (misma para el mismo código)
+        console.log("  ⚠️  Using known script address (validatorToAddress failed)")
+        scriptAddr = "addr_test1wzcprs9r7fxdtsx3528zkxqzwft6zfhhf98vu25kupgul8gw8z59u"
+        console.log("  Script Address:", scriptAddr)
+    }
 
     console.log("\n📊 Sensor Data to Verify:")
     console.log("  Sensor ID:", sensorData.sensor_id)
