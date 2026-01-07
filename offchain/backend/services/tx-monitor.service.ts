@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { OracleTransactionStatus } from '@prisma/client';
+import { BlockfrostProvider } from '@meshsdk/core';
 
 class TransactionMonitorService {
   private intervalId: NodeJS.Timeout | null = null;
@@ -91,46 +92,55 @@ class TransactionMonitorService {
    */
   private async checkTransaction(transaction_id: string, tx_hash: string): Promise<void> {
     try {
-      // TODO: Query Blockfrost API for transaction status
-      // This will be implemented in Phase 4/5 after testing
-      // For now, just update last_checked_at
+      if (!process.env.BLOCKFROST_API_KEY) {
+        console.error('❌ BLOCKFROST_API_KEY not configured');
+        return;
+      }
 
-      await prisma.oracleTransaction.update({
-        where: { id: transaction_id },
-        data: {
-          last_checked_at: new Date(),
-          status_message: 'Waiting for Blockfrost integration (Phase 4/5)'
-        }
-      });
-
-      // PLACEHOLDER: Simulated Blockfrost response
-      /*
       const blockfrost = new BlockfrostProvider(process.env.BLOCKFROST_API_KEY);
+
+      // Query transaction info from Blockfrost
       const txInfo = await blockfrost.fetchTxInfo(tx_hash);
 
       if (txInfo && txInfo.block) {
         // Transaction confirmed!
-        console.log(`✅ Transaction ${tx_hash} confirmed in block ${txInfo.block_height}`);
+        console.log(`✅ Transaction ${tx_hash} confirmed in block ${txInfo.blockHeight || 'unknown'}`);
+
+        const updateData: any = {
+          status: OracleTransactionStatus.CONFIRMED,
+          confirmed_at: new Date(),
+          last_checked_at: new Date(),
+          status_message: 'Confirmed on blockchain'
+        };
+
+        if (txInfo.blockHeight !== undefined) {
+          updateData.block_height = txInfo.blockHeight;
+        }
+
+        if (txInfo.blockTime !== undefined) {
+          updateData.block_time = new Date(txInfo.blockTime * 1000);
+        }
+
+        if (txInfo.slot !== undefined) {
+          updateData.slot = parseInt(txInfo.slot);
+        }
+
+        await prisma.oracleTransaction.update({
+          where: { id: transaction_id },
+          data: updateData
+        });
+      } else {
+        // Still pending in mempool
+        console.log(`⏳ Transaction ${tx_hash} still pending...`);
 
         await prisma.oracleTransaction.update({
           where: { id: transaction_id },
           data: {
-            status: OracleTransactionStatus.CONFIRMED,
-            confirmed_at: new Date(),
-            block_height: txInfo.block_height,
-            block_time: new Date(txInfo.block_time * 1000),
-            slot: txInfo.slot,
-            status_message: 'Confirmed on blockchain'
+            last_checked_at: new Date(),
+            status_message: 'Awaiting confirmation'
           }
         });
-      } else {
-        // Still pending
-        await prisma.oracleTransaction.update({
-          where: { id: transaction_id },
-          data: { last_checked_at: new Date() }
-        });
       }
-      */
 
     } catch (error: any) {
       console.error(`❌ Error checking transaction ${tx_hash}:`, error);
@@ -141,7 +151,7 @@ class TransactionMonitorService {
         where: { id: transaction_id },
         data: {
           last_checked_at: new Date(),
-          status_message: `Error: ${error.message}`
+          status_message: `Error checking tx: ${error.message}`
         }
       });
     }

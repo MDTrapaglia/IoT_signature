@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { measurementService } from './measurement.service.js';
 import { sensorService } from './sensor.service.js';
 import { OracleTransactionStatus, OracleTransactionType } from '@prisma/client';
+import { updateOracle, type UpdateOracleParams, type SensorData } from '../../transactions/update_oracle.js';
 
 class OracleSubmissionService {
   private intervalId: NodeJS.Timeout | null = null;
@@ -121,17 +122,57 @@ class OracleSubmissionService {
       // Link measurement to transaction immediately
       await measurementService.linkToTransaction(measurement.id, transaction.id);
 
-      // TODO: Call updateOracle() from update_oracle.ts
-      // This will be implemented in Phase 4 after refactoring
-      console.log(`⏸️  Transaction ${transaction.id} created, waiting for Phase 4 implementation`);
+      // Prepare sensor data for oracle update
+      const sensorData: SensorData = {
+        sensor_id: measurement.sensor_id,
+        temperature: measurement.temperature,
+        humidity: measurement.humidity,
+        timestamp: Number(measurement.timestamp),
+        signature: measurement.signature,
+        public_key: measurement.public_key
+      };
 
-      // For now, mark as PENDING with a message
-      await prisma.oracleTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          status_message: 'Waiting for oracle update implementation (Phase 4)'
-        }
-      });
+      // Call updateOracle() with refactored function
+      try {
+        console.log(`📡 Calling updateOracle for sensor ${measurement.sensor_id}...`);
+
+        const params: UpdateOracleParams = {
+          blockfrostApiKey: process.env.BLOCKFROST_API_KEY || '',
+          privateKey: process.env.PRIVATE_KEY || '',
+          networkId: 0, // Preprod = 0, Mainnet = 1
+          nftPolicyId: sensor.nft_policy_id,
+          nftAssetName: sensor.nft_asset_name,
+          sensorData
+        };
+
+        const txHash = await updateOracle(params);
+
+        console.log(`✅ Oracle update submitted: ${txHash}`);
+
+        // Update transaction with success
+        await prisma.oracleTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            tx_hash: txHash,
+            status: OracleTransactionStatus.PENDING,
+            status_message: 'Transaction submitted, awaiting confirmation',
+            submitted_at: new Date()
+          }
+        });
+
+      } catch (oracleError: any) {
+        console.error(`❌ Oracle update failed:`, oracleError);
+
+        // Update transaction with failure
+        await prisma.oracleTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: OracleTransactionStatus.FAILED,
+            status_message: oracleError?.message || 'Oracle update error',
+            last_checked_at: new Date()
+          }
+        });
+      }
 
     } catch (error) {
       console.error(`❌ Error submitting measurement ${measurement.id}:`, error);

@@ -4,7 +4,6 @@ import {
     MeshTxBuilder,
     applyParamsToScript,
     applyCborEncoding,
-    resolveScriptHash,
     type PlutusScript,
     mConStr0,
     serializePlutusScript,
@@ -14,28 +13,11 @@ import dotenv from "dotenv"
 import nacl from "tweetnacl"
 dotenv.config()
 
-const blockchainProvider = new BlockfrostProvider(process.env.BLOCKFROST_API_KEY || "")
-
-const txBuilder = new MeshTxBuilder({
-    fetcher: blockchainProvider,
-    verbose: true
-})
-
-const wallet = new MeshWallet({
-    networkId: 0,
-    fetcher: blockchainProvider,
-    submitter: blockchainProvider,
-    key: {
-        type: "root",
-        bech32: process.env.PRIVATE_KEY || ""
-    },
-});
-
 // Código compilado del validador sensor_oracle_ed25519 desde plutus.json
-const oracle_validator_code = "590491010100229800aba2aba1aba0aab9faab9eaab9dab9a488888896600264653001300800198041804800cdc3a400530080024888966002600460106ea800e264664530011325980099199119801001000912cc00400629422b30013371e6eb8c04c00400e2946266004004602800280710111bac301130123012301230123012301230123012300e375400c6eb8c004c034dd5009c566002600460186ea8022264b30013003300d375400313322598009804cc004dd5980218081baa300430103754005375c602660206ea8c04cc040dd500b4dd7180218081baa30133010375402c800a26464b300130160018992cc004c03260026eacc01cc04cdd5000cdd7180b18099baa301630133754033375c600e60266ea8c058c04cdd500ca0088acc004c8c9660026014003168acc004c0380062d132598009805980a9baa00189919191919194c004dd7180f800cdd7180f8034dd6980f802cdd6980f8024dd6980f801cdd7180f8012444444b300130260078cc0048c098c09cc09cc09cc09cc09c0064604c604e604e604e604e00323026302730273027001488966002b30015980099b894839c1cdd6980c98129baa010899b89375a6032604a6ea804120d00f8a50408d159800acc004cdc4a40006eb4c054c094dd500844cdc49bad301530253754020906807c52820468acc004cdc4240006eb4c004c094dd5008456600266e1cdc69bae300230253754020904000c56600266e1cdc69bae3003302537540209020456600266e212000371a6eb8c0a0c094dd50084528c5902345902345902345902345902345902345660033001375c6006604a6ea804266e28cdc519b8a9800a51a4021375a602a604a6ea8041792375c6050604a6ea8042600294690084dd6980c98129baa0105e4a600294690084dd6980098129baa0105e4a6eb8c008c094dd50082e5514a316408d16408c8b2046180f800980f000980e800980e000980d800980b1baa0018b2028301830153754004809901318099baa00130033013375400314a3164045164044602a00316404c64660020026eb0c008c048dd5005112cc004006297ae0899912cc004cdd7980c180a9baa0023018301537546012602a6ea801e26602e00466008008003133004004001404c602c002602e00280a08c050c054c0540062c8070c044c038dd500091119199119801001000912cc00400600713233225980099b910070028acc004cdc78038014400600c80aa26600a00a603600880a8dd7180a0009bad30150013017001405464646600200200c44b3001001801c4c8cc896600266e4402400a2b30013371e0120051001803202c899802802980e002202c375c602a0026eacc058004c0600050160a5eb7bdb180520008b2018323300100137586022601c6ea8018896600200314c0103d87a80008992cc004cdd7980998081baa001006899ba548000cc0480052f5c11330030033014002403860240028082294500b45900b118081808800cc02cdd5003cc03cc04000d2225980098020014566002601e6ea802a00716404115980098040014566002601e6ea802a0071640411640348068601a0026e1d20003009375400716401c300800130033754011149a26cac80081"
+export const oracle_validator_code = "590491010100229800aba2aba1aba0aab9faab9eaab9dab9a488888896600264653001300800198041804800cdc3a400530080024888966002600460106ea800e264664530011325980099199119801001000912cc00400629422b30013371e6eb8c04c00400e2946266004004602800280710111bac301130123012301230123012301230123012300e375400c6eb8c004c034dd5009c566002600460186ea8022264b30013003300d375400313322598009804cc004dd5980218081baa300430103754005375c602660206ea8c04cc040dd500b4dd7180218081baa30133010375402c800a26464b300130160018992cc004c03260026eacc01cc04cdd5000cdd7180b18099baa301630133754033375c600e60266ea8c058c04cdd500ca0088acc004c8c9660026014003168acc004c0380062d132598009805980a9baa00189919191919194c004dd7180f800cdd7180f8034dd6980f802cdd6980f8024dd6980f801cdd7180f8012444444b300130260078cc0048c098c09cc09cc09cc09cc09c0064604c604e604e604e604e00323026302730273027001488966002b30015980099b894839c1cdd6980c98129baa010899b89375a6032604a6ea804120d00f8a50408d159800acc004cdc4a40006eb4c054c094dd500844cdc49bad301530253754020906807c52820468acc004cdc4240006eb4c004c094dd5008456600266e1cdc69bae300230253754020904000c56600266e1cdc69bae3003302537540209020456600266e212000371a6eb8c0a0c094dd50084528c5902345902345902345902345902345902345660033001375c6006604a6ea804266e28cdc519b8a9800a51a4021375a602a604a6ea8041792375c6050604a6ea8042600294690084dd6980c98129baa0105e4a600294690084dd6980098129baa0105e4a6eb8c008c094dd50082e5514a316408d16408c8b2046180f800980f000980e800980e000980d800980b1baa0018b2028301830153754004809901318099baa00130033013375400314a3164045164044602a00316404c64660020026eb0c008c048dd5005112cc004006297ae0899912cc004cdd7980c180a9baa0023018301537546012602a6ea801e26602e00466008008003133004004001404c602c002602e00280a08c050c054c0540062c8070c044c038dd500091119199119801001000912cc00400600713233225980099b910070028acc004cdc78038014400600c80aa26600a00a603600880a8dd7180a0009bad30150013017001405464646600200200c44b3001001801c4c8cc896600266e4402400a2b30013371e0120051001803202c899802802980e002202c375c602a0026eacc058004c0600050160a5eb7bdb180520008b2018323300100137586022601c6ea8018896600200314c0103d87a80008992cc004cdd7980998081baa001006899ba548000cc0480052f5c11330030033014002403860240028082294500b45900b118081808800cc02cdd5003cc03cc04000d2225980098020014566002601e6ea802a00716404115980098040014566002601e6ea802a0071640411640348068601a0026e1d20003009375400716401c300800130033754011149a26cac80081"
 
 // Tipos para los datos del sensor
-interface SensorData {
+export interface SensorData {
     sensor_id: string;
     temperature: number;  // Temperatura * 10 (ej: 23.5°C = 235)
     humidity: number;     // Humedad * 10 (ej: 65.2% = 652)
@@ -44,10 +26,20 @@ interface SensorData {
     public_key: string;   // Clave pública Ed25519 (32 bytes hex = 64 chars)
 }
 
+// Parámetros para createOracle
+export interface CreateOracleParams {
+    blockfrostApiKey: string;
+    privateKey: string;
+    networkId: number;
+    nftPolicyId: string;
+    nftAssetName: string;
+    sensorData: SensorData;
+}
+
 /// Construye el mensaje binario que será firmado
 /// Orden alfabético: humidity || sensor_id || temperature || timestamp
 /// Los enteros se codifican como 8 bytes big-endian
-function buildMessage(data: SensorData): Buffer {
+export function buildMessage(data: SensorData): Buffer {
     // Convertir enteros a 8 bytes big-endian (coincide con Aiken)
     const humidityBytes = Buffer.alloc(8);
     humidityBytes.writeBigInt64BE(BigInt(data.humidity));
@@ -70,7 +62,7 @@ function buildMessage(data: SensorData): Buffer {
 }
 
 /// Genera datos de sensor firmados con Ed25519
-function generateSignedSensorData(
+export function generateSignedSensorData(
     sensor_id: string,
     temperature: number,
     humidity: number,
@@ -109,12 +101,31 @@ function generateSignedSensorData(
     };
 }
 
-async function createOracle(
-    wallet: MeshWallet,
-    nftPolicyId: string,
-    nftAssetName: string,
-    sensorData: SensorData
-): Promise<string> {
+/**
+ * Crea un oracle con datos de sensor iniciales
+ * @param params Parámetros de configuración y datos del sensor
+ * @returns Transaction hash de la creación
+ */
+export async function createOracle(params: CreateOracleParams): Promise<string> {
+    const { blockfrostApiKey, privateKey, networkId, nftPolicyId, nftAssetName, sensorData } = params;
+
+    // Inicializar provider, wallet y txBuilder con los parámetros proporcionados
+    const blockchainProvider = new BlockfrostProvider(blockfrostApiKey);
+
+    const txBuilder = new MeshTxBuilder({
+        fetcher: blockchainProvider,
+        verbose: true
+    });
+
+    const wallet = new MeshWallet({
+        networkId,
+        fetcher: blockchainProvider,
+        submitter: blockchainProvider,
+        key: {
+            type: "root",
+            bech32: privateKey
+        },
+    });
     const walletAddr = await wallet.getChangeAddress();
     const utxos = await wallet.getUtxos()
 
@@ -188,15 +199,23 @@ async function createOracle(
     return txHash;
 }
 
-// Main execution
+// ============================================================================
+// CLI Wrapper - Solo se ejecuta cuando el script se llama directamente
+// ============================================================================
+
 async function main() {
     // Parámetros del NFT (obtenidos de mint_sensor_nft.ts)
     const nftPolicyId = process.argv[2];
     const nftAssetName = process.argv[3];
 
     if (!nftPolicyId || !nftAssetName) {
-        console.error("❌ Usage: npm run demo -- <nft_policy_id> <nft_asset_name>");
-        console.error("   Example: npm run demo -- e659c328b17c189898d2e763c4982a0787ccb1474c096b482ec78594 53454e534f525f45535033325f3031");
+        console.error("❌ Usage: npm run oracle:create -- <nft_policy_id> <nft_asset_name>");
+        console.error("   Example: npm run oracle:create -- e659c328b17c189898d2e763c4982a0787ccb1474c096b482ec78594 53454e534f525f45535033325f3031");
+        process.exit(1);
+    }
+
+    if (!process.env.BLOCKFROST_API_KEY || !process.env.PRIVATE_KEY) {
+        console.error("❌ Error: BLOCKFROST_API_KEY and PRIVATE_KEY must be set in .env");
         process.exit(1);
     }
 
@@ -215,16 +234,26 @@ async function main() {
 
     console.log("  ✅ Firma generada exitosamente")
 
-    const txHash = await createOracle(wallet, nftPolicyId, nftAssetName, initialSensorData);
+    const txHash = await createOracle({
+        blockfrostApiKey: process.env.BLOCKFROST_API_KEY!,
+        privateKey: process.env.PRIVATE_KEY!,
+        networkId: 0,
+        nftPolicyId,
+        nftAssetName,
+        sensorData: initialSensorData
+    });
 
     console.log("\n📋 Summary:")
     console.log("  Tx Hash:", txHash)
     console.log("\nℹ️  The oracle is now initialized and ready to receive updates!")
 }
 
-main()
-    .then(() => console.log("\n✨ Done"))
-    .catch((err) => {
-        console.error("\n❌ Error:", err)
-        process.exit(1)
-    })
+// Solo ejecutar si este archivo se llama directamente (no cuando se importa)
+if (require.main === module) {
+    main()
+        .then(() => console.log("\n✨ Done"))
+        .catch((err) => {
+            console.error("\n❌ Error:", err)
+            process.exit(1)
+        });
+}
