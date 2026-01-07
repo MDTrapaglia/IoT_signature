@@ -341,7 +341,9 @@ async function main() {
 }
 
 // Solo ejecutar si este archivo se llama directamente (no cuando se importa)
-if (require.main === module) {
+// ESM: usar import.meta.url en lugar de require.main
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
     main()
         .then(() => console.log("\n✨ Done"))
         .catch((err) => {
