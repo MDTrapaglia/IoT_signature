@@ -29,7 +29,8 @@
     "dotenv": "^17.2.3",
     "elliptic": "^6.6.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1"
+    "express-rate-limit": "^8.2.1",
+    "lucid-cardano": "^0.10.11"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
