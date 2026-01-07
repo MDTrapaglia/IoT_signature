@@ -385,8 +385,93 @@ Error: Evaluate redeemers failed: Error serializing outputs: Cannot convert unde
 2. ✅ Crear branch `experiment/bytearray-fix`
 3. ✅ Explorar alternativas sistemáticamente
 4. ✅ Identificar solución: Lucid
-5. ⏳ **Próximo:** Reescribir scripts con Lucid
-   - `update_oracle.ts` → `update_oracle_lucid.ts`
-   - `test_ecdsa_onchain.ts` → `test_ecdsa_onchain_lucid.ts`
-6. ⏳ Probar oracle completo con Lucid
-7. ⏳ Documentar migración en README
+5. ✅ Crear scripts con Lucid
+   - ✅ `test_ecdsa_onchain_lucid.ts`
+   - ✅ `generate_lucid_wallet.ts`
+   - ⏳ `update_oracle_lucid.ts`
+6. ⏳ Configurar wallet de Lucid
+   - ✅ Generar LUCID_SEED
+   - ⏳ Obtener fondos del faucet
+   - ⏳ Probar transacción real
+7. ⏳ Probar oracle completo con Lucid
+8. ⏳ Documentar migración en README
+
+---
+
+## Scripts Creados con Lucid
+
+### 1. Generar Wallet de Lucid
+
+```bash
+npm run lucid:generate-wallet
+```
+
+Genera una nueva wallet compatible con Lucid y muestra:
+- Seed phrase de 24 palabras
+- Dirección de la wallet
+
+Agregar al `.env`:
+```bash
+LUCID_SEED="your 24 word seed phrase here"
+```
+
+### 2. Test ECDSA On-Chain con Lucid
+
+```bash
+npm run test:ecdsa:lucid
+```
+
+Crea un UTXO con datos del sensor firmados con ECDSA en el validador `simple_ecdsa_verifier`.
+
+**Requisitos:**
+- `LUCID_SEED` en `.env`
+- Fondos en la wallet (obtener del faucet de preprod)
+
+**Faucet:** https://docs.cardano.org/cardano-testnet/tools/faucet
+
+### Diferencias clave: MeshJS vs Lucid
+
+| Aspecto | MeshJS | Lucid |
+|---------|--------|-------|
+| **Wallet** | `bech32` private key (xprv...) | Seed phrase o hex key |
+| **Datum Schema** | `mConStr0([...])` | `Data.Object({...})` |
+| **ByteArrays** | `byteString(hex)` | Direct hex string |
+| **Tx Builder** | `MeshTxBuilder` | `lucid.newTx()` |
+| **Serialización** | ❌ Bug con ByteArrays | ✅ Funciona correctamente |
+
+### Ejemplo: Construcción de Datum
+
+**MeshJS:**
+```typescript
+const datum = mConStr0([
+    sensorData.sensor_id,
+    sensorData.temperature,
+    sensorData.humidity,
+    sensorData.timestamp,
+    byteString(sensorData.signature),    // ❌ Falla en serialización
+    byteString(sensorData.public_key)
+])
+```
+
+**Lucid:**
+```typescript
+const SimpleSensorDataSchema = Data.Object({
+    sensor_id: Data.Bytes(),
+    temperature: Data.Integer(),
+    humidity: Data.Integer(),
+    timestamp: Data.Integer(),
+    signature: Data.Bytes(),              // ✅ Funciona
+    public_key: Data.Bytes()
+})
+
+const datumData: SimpleSensorData = {
+    sensor_id: fromText("ESP32_001"),
+    temperature: BigInt(235),
+    humidity: BigInt(652),
+    timestamp: BigInt(1767720964446),
+    signature: "98C72ABF...",              // ✅ Funciona
+    public_key: "70F655FB..."
+}
+
+const datum = Data.to(datumData, SimpleSensorData)  // ✅ Funciona
+```

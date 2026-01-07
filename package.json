@@ -12,6 +12,8 @@
     "oracle:create": "tsx offchain/transactions/create_oracle.ts",
     "oracle:update": "tsx offchain/transactions/update_oracle.ts",
     "test:ecdsa": "tsx offchain/transactions/test_ecdsa_onchain.ts",
+    "test:ecdsa:lucid": "tsx offchain/transactions/test_ecdsa_onchain_lucid.ts",
+    "lucid:generate-wallet": "tsx offchain/transactions/utils/generate_lucid_wallet.ts",
     "build:backend": "tsc --project tsconfig.json --outDir dist",
     "lint:backend": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts",
     "lint:fix": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts --fix",
