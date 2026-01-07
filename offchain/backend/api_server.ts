@@ -1,100 +1,19 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import elliptic from 'elliptic';
-import crypto from 'crypto';
-
-const EC = elliptic.ec;
-const ec = new EC('secp256k1'); // Curva secp256k1 (Bitcoin/Ethereum)
-
-interface ArduinoPayload {
-  sensor_id: string;
-  temperature?: number;        // Temperatura en °C (opcional)
-  humidity?: number;           // Humedad relativa % (opcional)
-  message?: string;            // Mensaje original firmado (opcional, se construye automáticamente)
-  hash: string;                // SHA-256 hash del mensaje (hex)
-  signature: string;           // Firma ECDSA (r+s, 64 bytes hex)
-  publicKey: string;           // Clave pública (x+y, 64 bytes hex)
-  timestamp?: number;          // Unix timestamp de cuando se tomó la medición (cliente)
-  verified?: boolean;          // Si la firma fue verificada exitosamente
-  received_timestamp?: number; // Unix timestamp de cuando se recibió (servidor)
-}
-
-/**
- * Construye el mensaje binario a partir de los campos ordenados alfabéticamente
- * Compatible con el validator de Aiken sensor_oracle_verified.ak
- *
- * Formato: humidity_bytes || sensor_id || temperature_bytes || timestamp_bytes
- * Los enteros se codifican como 8 bytes big-endian (Int64BE)
- */
-function buildMessage(payload: ArduinoPayload): Buffer {
-  const buffers: Buffer[] = [];
-
-  // Orden alfabético: humidity, sensor_id, temperature, timestamp
-
-  // 1. humidity (8 bytes big-endian)
-  if (payload.humidity !== undefined) {
-    const humidityBuffer = Buffer.allocUnsafe(8);
-    humidityBuffer.writeBigInt64BE(BigInt(payload.humidity));
-    buffers.push(humidityBuffer);
-  }
-
-  // 2. sensor_id (UTF-8 bytes)
-  if (payload.sensor_id) {
-    buffers.push(Buffer.from(payload.sensor_id, 'utf-8'));
-  }
-
-  // 3. temperature (8 bytes big-endian)
-  if (payload.temperature !== undefined) {
-    const temperatureBuffer = Buffer.allocUnsafe(8);
-    temperatureBuffer.writeBigInt64BE(BigInt(payload.temperature));
-    buffers.push(temperatureBuffer);
-  }
-
-  // 4. timestamp (8 bytes big-endian)
-  if (payload.timestamp !== undefined) {
-    const timestampBuffer = Buffer.allocUnsafe(8);
-    timestampBuffer.writeBigInt64BE(BigInt(payload.timestamp));
-    buffers.push(timestampBuffer);
-  }
-
-  return Buffer.concat(buffers);
-}
-
-// Calcula SHA-256 hash de un mensaje binario
-function calculateHash(message: Buffer): string {
-  return crypto.createHash('sha256').update(message).digest('hex').toUpperCase();
-}
-
-// Verifica que el hash corresponda al mensaje
-function verifyHash(message: Buffer, providedHash: string): boolean {
-  const calculatedHash = calculateHash(message);
-  return calculatedHash.toLowerCase() === providedHash.toLowerCase();
-}
-
-// Verifica firma ECDSA
-function verifySignature(hash: string, signature: string, publicKey: string): boolean {
-  try {
-    // Agregar prefijo 04 para indicar clave pública sin comprimir
-    const pubKeyWithPrefix = '04' + publicKey.toLowerCase();
-    const key = ec.keyFromPublic(pubKeyWithPrefix, 'hex');
-
-    // Dividir firma en r y s (cada uno 32 bytes = 64 hex chars)
-    const r = signature.substring(0, 64).toLowerCase();
-    const s = signature.substring(64, 128).toLowerCase();
-
-    return key.verify(hash.toLowerCase(), { r, s });
-  } catch (error) {
-    console.error('Error verificando firma:', error);
-    return false;
-  }
-}
+import { prisma } from './config/prisma.js';
+import { measurementService } from './services/measurement.service.js';
+import { sensorService } from './services/sensor.service.js';
+import { oracleSubmissionService } from './services/oracle-submission.service.js';
+import { txMonitorService } from './services/tx-monitor.service.js';
+import { buildMessage, verifyHash, calculateHash } from './utils/message-builder.js';
+import { verifyECDSASignature } from './utils/signature-verification.js';
+import type { ArduinoPayload } from './types/index.js';
 
 const app = express();
 const PORT = 3001;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || 'c90e31d3f88c8851687014fa69a601fb65717449a3d07a50bd84ee75046fb885';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://192.168.100.200:3000';
-const MAX_MEASUREMENTS = 1000; // Máximo de mediciones en memoria
 
 // Rate limiting: 100 requests por 15 minutos por IP
 const limiter = rateLimit({
@@ -144,11 +63,8 @@ function validateToken(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Base de datos temporal (Array)
-let measurementsHistory: ArduinoPayload[] = [];
-
 // 2. RUTA POST: Aquí es donde el Arduino "empuja" los datos
-app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
+app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
   const payload: ArduinoPayload = req.body;
 
   // Validación básica
@@ -172,10 +88,11 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
   }
 
   // Construir mensaje a partir de los campos (ordenados alfabéticamente)
-  const message = payload.message || buildMessage(payload);
+  const message = buildMessage(payload);
+  const messageHex = message.toString('hex');
 
   console.log(`📥 Datos recibidos del sensor ${payload.sensor_id}`);
-  console.log(`   Mensaje construido: ${message}`);
+  console.log(`   Mensaje construido: ${messageHex.substring(0, 32)}...`);
   if (payload.temperature !== undefined) console.log(`   Temperatura: ${payload.temperature}°C`);
   if (payload.humidity !== undefined) console.log(`   Humedad: ${payload.humidity}%`);
   if (payload.timestamp) console.log(`   Timestamp medición: ${new Date(payload.timestamp).toISOString()}`);
@@ -194,28 +111,25 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
       verified: false,
       expected_hash: calculatedHash,
       provided_hash: payload.hash,
-      message: message
+      message: messageHex
     });
   }
 
   // Verificar firma ECDSA
-  const isValid = verifySignature(payload.hash, payload.signature, payload.publicKey);
+  const isValid = verifyECDSASignature(payload.hash, payload.signature, payload.publicKey);
 
   if (!isValid) {
     console.log(`❌ Firma inválida para sensor ${payload.sensor_id}`);
 
     // Guardar medición con verified: false
-    measurementsHistory.push({
+    const measurement = await measurementService.create({
       ...payload,
-      message, // Incluir el mensaje construido
+      message: messageHex,
       verified: false,
       received_timestamp: Date.now()
     });
 
-    // Mantener solo las últimas MAX_MEASUREMENTS mediciones
-    if (measurementsHistory.length > MAX_MEASUREMENTS) {
-      measurementsHistory = measurementsHistory.slice(-MAX_MEASUREMENTS);
-    }
+    console.log(`💾 Saved invalid measurement ${measurement.id} for sensor ${payload.sensor_id}`);
 
     return res.status(401).json({
       status: "error",
@@ -226,34 +140,84 @@ app.post('/api/ingest', validateToken, (req: Request, res: Response) => {
 
   console.log(`✅ Firma válida para sensor ${payload.sensor_id}`);
 
-  // Agregar nueva medición con verified: true
-  measurementsHistory.push({
+  // Guardar medición con verified: true
+  const measurement = await measurementService.create({
     ...payload,
-    message, // Incluir el mensaje construido
+    message: messageHex,
     verified: true,
     received_timestamp: Date.now()
   });
 
-  // Mantener solo las últimas MAX_MEASUREMENTS mediciones
-  if (measurementsHistory.length > MAX_MEASUREMENTS) {
-    measurementsHistory = measurementsHistory.slice(-MAX_MEASUREMENTS);
-  }
+  console.log(`💾 Saved measurement ${measurement.id} for sensor ${payload.sensor_id}`);
 
   res.status(201).json({
     status: "success",
     message: "Firma verificada. Dato pendiente de certificación en Cardano",
-    verified: true
+    verified: true,
+    measurement_id: measurement.id
   });
 });
 
 // 3. RUTA GET: Para que el Frontend consulte los datos
-app.get('/api/measurements', validateToken, (req: Request, res: Response) => {
-  res.json(measurementsHistory);
+app.get('/api/measurements', validateToken, async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 100;
+  const sensor_id = req.query.sensor_id as string;
+
+  let measurements;
+
+  if (sensor_id) {
+    measurements = await measurementService.getRecent(sensor_id, limit);
+  } else {
+    measurements = await measurementService.getAll(page, limit);
+  }
+
+  // Serializar BigInt a string para JSON
+  const serialized = measurements.map(m => ({
+    ...m,
+    timestamp: m.timestamp ? m.timestamp.toString() : null
+  }));
+
+  res.json(serialized);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// 4. RUTA GET: Lista de sensores activos
+app.get('/api/sensors', validateToken, async (req: Request, res: Response) => {
+  const sensors = await sensorService.listActive();
+  res.json(sensors);
+});
+
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🌐 API Rest activa en http://0.0.0.0:${PORT}`);
   console.log(`📡 Esperando datos en POST /api/ingest`);
   console.log(`🔗 Accesible desde la red en http://186.123.164.151:${PORT}`);
+
+  // Test database connection
+  try {
+    await prisma.$connect();
+    console.log(`✅ Database connected`);
+  } catch (error) {
+    console.error(`❌ Database connection failed:`, error);
+    console.error(`💡 Make sure PostgreSQL is running: docker-compose up -d`);
+    process.exit(1);
+  }
+
+  // Start services
+  if (process.env.ORACLE_AUTO_SUBMIT === 'true') {
+    oracleSubmissionService.start();
+  }
+
+  txMonitorService.start();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...');
+
+  oracleSubmissionService.stop();
+  txMonitorService.stop();
+
+  await prisma.$disconnect();
+  process.exit(0);
 });
 

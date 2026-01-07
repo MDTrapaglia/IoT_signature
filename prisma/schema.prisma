@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Sensor Configuration
+// Each ESP32 sensor registered in the system
+model Sensor {
+  id                String   @id @default(cuid())
+  sensor_id         String   @unique              // "ESP32_001"
+  public_key        String                        // Ed25519 public key (64 chars hex)
+  name              String?                       // Descriptive name
+  description       String?
+
+  // NFT Identification
+  nft_policy_id     String?                       // Policy ID of sensor NFT
+  nft_asset_name    String?                       // Asset name (hex)
+
+  // Oracle Script Address
+  script_address    String?                       // Cardano oracle UTXO address
+
+  // Status
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Relations
+  measurements      Measurement[]
+  oracle_transactions OracleTransaction[]
+
+  @@index([sensor_id])
+  @@index([nft_policy_id, nft_asset_name])
+}
+
+// Measurement Data
+// All measurements received from ESP32 (verified or not)
+model Measurement {
+  id                  String   @id @default(cuid())
+
+  // Sensor relationship
+  sensor_id           String
+  sensor              Sensor   @relation(fields: [sensor_id], references: [sensor_id])
+
+  // Sensor data (from ESP32)
+  temperature         Int?                          // Celsius * 10 (235 = 23.5°C)
+  humidity            Int?                          // Percent * 10 (652 = 65.2%)
+  timestamp           BigInt?                       // Unix timestamp ESP32 (ms)
+
+  // Cryptographic data
+  hash                String                        // SHA-256 (64 chars hex)
+  signature           String                        // Ed25519 signature (128 chars hex)
+  public_key          String                        // Ed25519 public key (64 chars hex)
+  message             String?                       // Binary message reconstructed (hex)
+
+  // Verification status (offchain)
+  verified            Boolean                       // Valid signature?
+  verification_error  String?                       // Error if fails
+
+  // Server timestamp
+  received_at         DateTime @default(now())
+
+  // Link to blockchain
+  oracle_transaction_id String?
+  oracle_transaction    OracleTransaction? @relation(fields: [oracle_transaction_id], references: [id])
+
+  @@index([sensor_id])
+  @@index([received_at])
+  @@index([verified])
+  @@index([oracle_transaction_id])
+}
+
+// Oracle Transaction Status
+enum OracleTransactionStatus {
+  PENDING       // Sent to mempool, awaiting confirmation
+  CONFIRMED     // Included in a block
+  FAILED        // Transaction failed
+  RETRYING      // Failed, will retry
+}
+
+// Oracle Transaction Type
+enum OracleTransactionType {
+  MINT_NFT      // Minting sensor NFT
+  CREATE        // Initial oracle creation
+  UPDATE        // Update with new data
+  DELETE        // Oracle deletion
+}
+
+// Oracle Transaction
+// History of all transactions sent to Cardano blockchain
+model OracleTransaction {
+  id              String   @id @default(cuid())
+
+  // Sensor relationship
+  sensor_id       String
+  sensor          Sensor   @relation(fields: [sensor_id], references: [sensor_id])
+
+  // Transaction type
+  type            OracleTransactionType
+
+  // Associated measurements
+  measurements    Measurement[]
+
+  // Cardano transaction
+  tx_hash         String?  @unique               // Cardano tx hash
+  tx_cbor         String?                        // Signed CBOR (for resubmit)
+
+  // Status tracking
+  status          OracleTransactionStatus @default(PENDING)
+  status_message  String?                        // Error/status message
+
+  // Timestamps
+  submitted_at    DateTime @default(now())
+  confirmed_at    DateTime?
+  last_checked_at DateTime?
+
+  // Blockchain data (after confirmation)
+  block_height    Int?
+  block_time      DateTime?
+  slot            Int?
+
+  // NFT info
+  nft_policy_id   String
+  nft_asset_name  String
+
+  // Script address
+  script_address  String?
+
+  // UTXO info (for next update)
+  utxo_tx_hash    String?
+  utxo_index      Int?
+
+  // Datum (on-chain data)
+  datum_json      Json?
+
+  // Retry logic
+  retry_count     Int      @default(0)
+  max_retries     Int      @default(3)
+  next_retry_at   DateTime?
+
+  @@index([sensor_id])
+  @@index([status])
+  @@index([submitted_at])
+  @@index([tx_hash])
+  @@index([nft_policy_id, nft_asset_name])
+}
