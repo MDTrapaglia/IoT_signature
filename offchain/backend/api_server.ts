@@ -7,7 +7,7 @@ import { sensorService } from './services/sensor.service.js';
 import { oracleSubmissionService } from './services/oracle-submission.service.js';
 import { txMonitorService } from './services/tx-monitor.service.js';
 import { buildMessage, verifyHash, calculateHash } from './utils/message-builder.js';
-import { verifyECDSASignature } from './utils/signature-verification.js';
+import { verifyEd25519Signature } from './utils/signature-verification.js';
 import type { ArduinoPayload } from './types/index.js';
 
 const app = express();
@@ -80,11 +80,11 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
   }
 
   if (!hexRegex.test(payload.signature) || payload.signature.length !== 128) {
-    return res.status(400).json({ error: "Signature inválida (debe ser 128 caracteres hex)" });
+    return res.status(400).json({ error: "Signature inválida (debe ser 128 caracteres hex para Ed25519)" });
   }
 
-  if (!hexRegex.test(payload.publicKey) || payload.publicKey.length !== 128) {
-    return res.status(400).json({ error: "PublicKey inválida (debe ser 128 caracteres hex)" });
+  if (!hexRegex.test(payload.publicKey) || payload.publicKey.length !== 64) {
+    return res.status(400).json({ error: "PublicKey inválida (debe ser 64 caracteres hex para Ed25519)" });
   }
 
   // Construir mensaje a partir de los campos (ordenados alfabéticamente)
@@ -115,11 +115,13 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
     });
   }
 
-  // Verificar firma ECDSA
-  const isValid = verifyECDSASignature(payload.hash, payload.signature, payload.publicKey);
+  // Verificar firma Ed25519
+  // NOTA: Ed25519 firma el HASH SHA-256, no el mensaje completo
+  const hashBuffer = Buffer.from(payload.hash, 'hex');
+  const isValid = verifyEd25519Signature(hashBuffer, payload.signature, payload.publicKey);
 
   if (!isValid) {
-    console.log(`❌ Firma inválida para sensor ${payload.sensor_id}`);
+    console.log(`❌ Firma Ed25519 inválida para sensor ${payload.sensor_id}`);
 
     // Guardar medición con verified: false
     const measurement = await measurementService.create({
@@ -133,12 +135,12 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
 
     return res.status(401).json({
       status: "error",
-      error: "Firma ECDSA inválida",
+      error: "Firma Ed25519 inválida",
       verified: false
     });
   }
 
-  console.log(`✅ Firma válida para sensor ${payload.sensor_id}`);
+  console.log(`✅ Firma Ed25519 válida para sensor ${payload.sensor_id}`);
 
   // Guardar medición con verified: true
   const measurement = await measurementService.create({
