@@ -1,4 +1,5 @@
 use aiken/builtin
+use aiken/collection/list
 use aiken/primitive/bytearray
 use cardano/transaction.{OutputReference, Transaction}
 
@@ -8,8 +9,8 @@ pub type SimpleSensorData {
   temperature: Int,       // Temperature * 10 (e.g., 23.5°C = 235)
   humidity: Int,          // Humidity * 10 (e.g., 65.2% = 652)
   timestamp: Int,         // Unix timestamp (POSIX time in milliseconds)
-  signature: ByteArray,   // ECDSA secp256k1 signature (64 bytes)
-  public_key: ByteArray,  // Public key (64 bytes uncompressed)
+  signature: List<Int>,   // ECDSA secp256k1 signature (64 bytes as List<Int>)
+  public_key: List<Int>,  // Public key (64 bytes uncompressed as List<Int>)
 }
 
 /// Convierte un entero a ByteArray (8 bytes big-endian con signo)
@@ -35,12 +36,23 @@ fn build_message_hash(data: SimpleSensorData) -> ByteArray {
   builtin.sha2_256(message)
 }
 
+/// Convierte List<Int> a ByteArray
+/// Cada Int debe estar en el rango 0-255 (1 byte)
+/// Usado para convertir signature y public_key desde el datum
+fn list_to_bytearray(bytes: List<Int>) -> ByteArray {
+  list.reduce(bytes, #[], bytearray.push)
+}
+
 /// Valida la firma ECDSA secp256k1
 fn verify_signature(data: SimpleSensorData) -> Bool {
   let hash = build_message_hash(data)
 
+  // Convertir List<Int> a ByteArray
+  let signature_bytes = list_to_bytearray(data.signature)
+  let public_key_bytes = list_to_bytearray(data.public_key)
+
   // Verificar firma ECDSA secp256k1
-  builtin.verify_ecdsa_secp256k1_signature(data.public_key, hash, data.signature)
+  builtin.verify_ecdsa_secp256k1_signature(public_key_bytes, hash, signature_bytes)
 }
 
 /// Validador simple: solo verifica que la firma ECDSA sea válida
