@@ -2,11 +2,11 @@
  * Tipos TypeScript para el sistema de Oracle de Sensores
  *
  * Estos tipos corresponden a las estructuras definidas en el contrato Aiken
- * sensor_oracle_verified.ak
+ * sensor_oracle_ed25519.ak
  */
 
 /**
- * Datos del sensor con firma ECDSA
+ * Datos del sensor con firma Ed25519
  *
  * Corresponde al tipo SensorData en Aiken
  */
@@ -15,8 +15,8 @@ export interface SensorData {
     temperature: number;   // Temperatura * 10 (ej: 23.5°C = 235)
     humidity: number;      // Humedad * 10 (ej: 65.2% = 652)
     timestamp: number;     // Unix timestamp en milisegundos
-    signature: string;     // Firma ECDSA secp256k1 (64 bytes en hex)
-    public_key: string;    // Clave pública secp256k1 (64 bytes en hex, sin comprimir)
+    signature: string;     // Firma Ed25519 (64 bytes en hex)
+    public_key: string;    // Clave pública Ed25519 (32 bytes en hex)
 }
 
 /**
@@ -70,14 +70,14 @@ export function validateSensorData(data: SensorData): { valid: boolean; errors: 
         errors.push(`Invalid timestamp: ${data.timestamp} (must be positive)`);
     }
 
-    // Validar longitud de firma (64 bytes = 128 caracteres hex)
+    // Validar longitud de firma Ed25519 (64 bytes = 128 caracteres hex)
     if (data.signature.length !== 128) {
-        errors.push(`Invalid signature length: ${data.signature.length} (expected: 128)`);
+        errors.push(`Invalid signature length: ${data.signature.length} (expected: 128 for Ed25519)`);
     }
 
-    // Validar longitud de clave pública (64 bytes = 128 caracteres hex)
-    if (data.public_key.length !== 128) {
-        errors.push(`Invalid public_key length: ${data.public_key.length} (expected: 128)`);
+    // Validar longitud de clave pública Ed25519 (32 bytes = 64 caracteres hex)
+    if (data.public_key.length !== 64) {
+        errors.push(`Invalid public_key length: ${data.public_key.length} (expected: 64 for Ed25519)`);
     }
 
     // Validar que sensor_id no esté vacío

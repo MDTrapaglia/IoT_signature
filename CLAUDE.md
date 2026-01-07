@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor measurements from Arduino/ESP32 devices, cryptographically signs them with Ed25519, and uploads to Cardano. Three-layer architecture: hardware edge (Arduino), Node.js backend, Next.js frontend dashboard.
+ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor measurements from Arduino/ESP32 devices, cryptographically signs them with **Ed25519**, and uploads to Cardano. Three-layer architecture: hardware edge (Arduino), Node.js backend, Next.js frontend dashboard.
 
-**Current Phase:** Phase 2 - API signature verification (in-memory storage, no database yet)
+**Current Phase:** Phase 2 - Ed25519 signatures validated on-chain (API in-memory storage, no database yet)
 
 ## Commands
 
@@ -17,10 +17,14 @@ npm run dev                 # Start dev server with tsx watch (port 3001)
 npm run demo                # Run transaction demo
 npm run nft                 # Run NFT minting
 
-# Oracle Scripts (Cardano transactions)
+# Oracle Scripts (Cardano transactions with Ed25519)
 npm run oracle:mint-nft -- <sensor_id>           # Mint NFT for sensor
-npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT
-npm run oracle:update -- <policy_id> <asset_name> [num_updates] # Update oracle
+npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT (Ed25519)
+npm run oracle:update -- <policy_id> <asset_name> [num_updates] # Update oracle (Ed25519)
+
+# Ed25519 Testing
+npm run test:ed25519:create    # Create UTXO with Ed25519 signature
+npm run test:ed25519:consume   # Consume UTXO (validates on-chain)
 
 # Shell scripts
 ./scripts/backend_start.sh  # Start server (kills previous, saves PID to .dev.pid)
@@ -62,7 +66,9 @@ Frontend ← GET /api/measurements ←───────┘
 ├── onchain/
 │   └── sensors-oracle/ # Aiken smart contracts
 ├── hardware/           # Arduino/ESP32 code
-│   └── sign_device.ino        # ECDSA signing sketch
+│   ├── sign_device_ed25519.ino    # Ed25519 signing sketch (MAIN)
+│   ├── README_ED25519.md          # Ed25519 setup guide
+│   └── sign_device.ino            # ECDSA signing (legacy/Ethereum)
 ├── scripts/            # Management scripts
 ├── docs/               # Documentation
 └── test-data/          # Test payloads and signatures
@@ -72,17 +78,24 @@ Frontend ← GET /api/measurements ←───────┘
 
 - `offchain/backend/api_server.ts` - Main Express server (port 3001)
 - `offchain/backend/srial_index.ts` - Alternative serial port listener for Arduino (not active)
-- `hardware/sign_device.ino` - ESP32 Arduino sketch with ECDSA signing
+- `hardware/sign_device_ed25519.ino` - ESP32 Arduino sketch with **Ed25519** signing (MAIN)
+- `hardware/sign_device.ino` - ESP32 Arduino sketch with ECDSA signing (legacy/Ethereum)
+- `hardware/README_ED25519.md` - Ed25519 setup and installation guide
 - `offchain/frontend/` - Next.js dashboard application
 - `offchain/transactions/` - Cardano transaction code (MeshJS)
   - `mint_sensor_nft.ts` - Mint unique NFT for sensor oracle
-  - `create_oracle.ts` - Initialize oracle with NFT and initial data
-  - `update_oracle.ts` - Update oracle with new sensor readings
-  - `types.ts` - TypeScript types for SensorData and OracleParams
-- `onchain/sensors-oracle/validators/sensor_oracle_verified.ak` - Smart contract with ECDSA verification
-- `onchain/sensors-oracle/validators/nft.ak` - NFT minting policy
+  - `create_oracle.ts` - Initialize oracle with NFT and Ed25519 signed data
+  - `update_oracle.ts` - Update oracle with new Ed25519 signed readings
+  - `types.ts` - TypeScript types for SensorData and OracleParams (Ed25519)
+  - `test_ed25519_create.ts` - Test Ed25519 UTXO creation
+  - `test_ed25519_consume.ts` - Test Ed25519 UTXO consumption (validates on-chain)
+- `onchain/sensors-oracle/validators/` - Aiken smart contracts
+  - `sensor_oracle_ed25519.ak` - Smart contract with **Ed25519** verification (MAIN)
+  - `sensor_oracle_verified.ak` - Smart contract with ECDSA verification (legacy/Ethereum)
+  - `simple_ed25519_validator.ak` - Simple Ed25519 test validator
+  - `nft.ak` - NFT minting policy
 - `onchain/sensors-oracle/plutus.json` - Compiled Plutus scripts
-- `docs/oracle-usage.md` - Complete guide for using oracle scripts
+- `docs/ed25519-migration-guide.md` - Complete Ed25519 migration guide
 
 ### Data Model
 
