@@ -42,9 +42,32 @@ const script: PlutusScript = {
 
 const scriptAddr = serializePlutusScript(script).address;
 
+// Función para construir mensaje desde datos del sensor
+// DEBE coincidir con build_message() en sensor_oracle_ed25519.ak
+// Orden alfabético: humidity || sensor_id || temperature || timestamp
+function buildMessage(sensor_id: string, temperature: number, humidity: number, timestamp: number): Buffer {
+    const humidityBytes = Buffer.alloc(8);
+    humidityBytes.writeBigInt64BE(BigInt(humidity));
+
+    const temperatureBytes = Buffer.alloc(8);
+    temperatureBytes.writeBigInt64BE(BigInt(temperature));
+
+    const timestampBytes = Buffer.alloc(8);
+    timestampBytes.writeBigInt64BE(BigInt(timestamp));
+
+    const sensorIdBytes = Buffer.from(sensor_id, 'utf8');
+
+    return Buffer.concat([
+        humidityBytes,
+        sensorIdBytes,
+        temperatureBytes,
+        timestampBytes
+    ]);
+}
+
 async function main() {
     console.log("=".repeat(60))
-    console.log("Crear UTXO con Validador Ed25519")
+    console.log("Crear UTXO con Validador Ed25519 - MENSAJE CONSTRUIDO")
     console.log("=".repeat(60))
 
     const walletAddr = await wallet.getChangeAddress();
@@ -62,8 +85,14 @@ async function main() {
     const publicKeyBytes = keyPair.publicKey;
     const secretKeyBytes = keyPair.secretKey;
 
-    // Mensaje de prueba
-    const message = Buffer.from("Hello Cardano from ESP32!", 'utf8');
+    // Datos de sensor de prueba (igual que el oracle)
+    const sensor_id = "ESP32_TEST_001";
+    const temperature = 235;  // 23.5°C
+    const humidity = 652;     // 65.2%
+    const timestamp = Date.now();
+
+    // Construir mensaje IGUAL que el oracle
+    const message = buildMessage(sensor_id, temperature, humidity, timestamp);
     const messageHex = message.toString('hex');
 
     // Firmar mensaje
@@ -74,8 +103,12 @@ async function main() {
     const signatureHex = Buffer.from(signature).toString('hex');
 
     console.log(`  Public Key (32 bytes): ${publicKeyHex}`)
-    console.log(`  Message: "${message.toString('utf8')}"`)
-    console.log(`  Message (hex): ${messageHex}`)
+    console.log(`\n📊 Sensor Data:`)
+    console.log(`  Sensor ID: ${sensor_id}`)
+    console.log(`  Temperature: ${temperature / 10}°C`)
+    console.log(`  Humidity: ${humidity / 10}%`)
+    console.log(`  Timestamp: ${new Date(timestamp).toISOString()}`)
+    console.log(`\n  Message (constructed, ${message.length} bytes): ${messageHex}`)
     console.log(`  Signature (64 bytes): ${signatureHex}`)
     console.log(`  ✅ Firma generada y válida`)
 
@@ -93,7 +126,7 @@ async function main() {
 
     console.log("\n🔨 Construyendo transacción...")
     console.log("  Depositando 3 ADA en script address")
-    console.log("  Datum: { message, signature, public_key }")
+    console.log("  Datum: { message (CONSTRUCTED from sensor data), signature, public_key }")
 
     const unsignedTx = await txBuilder
         .txOut(scriptAddr, [{ unit: "lovelace", quantity: "3000000" }])
@@ -123,11 +156,17 @@ async function main() {
         publicKey: publicKeyHex,
         message: messageHex,
         signature: signatureHex,
-        scriptAddress: scriptAddr
+        scriptAddress: scriptAddr,
+        sensorData: {
+            sensor_id,
+            temperature,
+            humidity,
+            timestamp
+        }
     };
 
     fs.writeFileSync('test-data/ed25519_test_keys.json', JSON.stringify(testData, null, 2));
-    console.log("\n💾 Claves guardadas en: test-data/ed25519_test_keys.json")
+    console.log("\n💾 Claves y datos del sensor guardados en: test-data/ed25519_test_keys.json")
 }
 
 main().catch(console.error)
