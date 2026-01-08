@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { prisma } from './config/prisma.js';
 import { measurementService } from './services/measurement.service.js';
 import { sensorService } from './services/sensor.service.js';
+import { transactionService } from './services/transaction.service.js';
 import { oracleSubmissionService } from './services/oracle-submission.service.js';
 import { txMonitorService } from './services/tx-monitor.service.js';
 import { buildMessage, verifyHash, calculateHash } from './utils/message-builder.js';
@@ -167,14 +168,21 @@ app.get('/api/measurements', validateToken, async (req: Request, res: Response) 
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 100;
   const sensor_id = req.query.sensor_id as string;
+  const verified = req.query.verified as string;
 
-  let measurements;
+  const where: any = {};
+  if (sensor_id) where.sensor_id = sensor_id;
+  if (verified !== undefined) where.verified = verified === 'true';
 
-  if (sensor_id) {
-    measurements = await measurementService.getRecent(sensor_id, limit);
-  } else {
-    measurements = await measurementService.getAll(page, limit);
-  }
+  const measurements = await prisma.measurement.findMany({
+    where,
+    orderBy: { received_at: 'desc' },
+    take: limit,
+    skip: (page - 1) * limit,
+    include: {
+      oracle_transaction: true
+    }
+  });
 
   // Serializar BigInt a string para JSON
   const serialized = measurements.map(m => ({
@@ -187,8 +195,107 @@ app.get('/api/measurements', validateToken, async (req: Request, res: Response) 
 
 // 4. RUTA GET: Lista de sensores activos
 app.get('/api/sensors', validateToken, async (req: Request, res: Response) => {
-  const sensors = await sensorService.listActive();
-  res.json(sensors);
+  const sensors = await prisma.sensor.findMany({
+    where: { is_active: true },
+    orderBy: { created_at: 'desc' },
+    include: {
+      _count: {
+        select: {
+          measurements: true,
+          oracle_transactions: true
+        }
+      },
+      measurements: {
+        take: 1,
+        orderBy: { received_at: 'desc' }
+      }
+    }
+  });
+
+  // Aplanar array measurements a latest_measurement y serializar BigInt
+  const formatted = sensors.map(s => ({
+    ...s,
+    latest_measurement: s.measurements[0] ? {
+      ...s.measurements[0],
+      timestamp: s.measurements[0].timestamp ? s.measurements[0].timestamp.toString() : null
+    } : null,
+    measurements: undefined
+  }));
+
+  res.json(formatted);
+});
+
+// 5. RUTA GET: Historial de transacciones blockchain
+app.get('/api/transactions', validateToken, async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 100;
+  const sensor_id = req.query.sensor_id as string;
+  const status = req.query.status as string;
+
+  let transactions;
+
+  if (sensor_id && status) {
+    transactions = await prisma.oracleTransaction.findMany({
+      where: { sensor_id, status: status as any },
+      orderBy: { submitted_at: 'desc' },
+      take: limit,
+      skip: (page - 1) * limit,
+      include: { sensor: true }
+    });
+  } else if (sensor_id) {
+    transactions = await transactionService.getBySensor(sensor_id, limit);
+  } else if (status) {
+    transactions = await transactionService.getByStatus(status as any, limit);
+  } else {
+    transactions = await transactionService.getAll(page, limit);
+  }
+
+  // Serializar DateTime a ISO string
+  const serialized = transactions.map(tx => ({
+    ...tx,
+    submitted_at: tx.submitted_at?.toISOString(),
+    confirmed_at: tx.confirmed_at?.toISOString(),
+    last_checked_at: tx.last_checked_at?.toISOString(),
+    block_time: tx.block_time?.toISOString()
+  }));
+
+  res.json(serialized);
+});
+
+// 6. RUTA GET: Estadísticas agregadas
+app.get('/api/statistics', validateToken, async (req: Request, res: Response) => {
+  const [measurementStats, sensorStats, txStats] = await Promise.all([
+    // Measurement statistics
+    prisma.measurement.groupBy({
+      by: ['verified'],
+      _count: true
+    }).then(results => {
+      const total = results.reduce((sum, r) => sum + r._count, 0);
+      const verified = results.find(r => r.verified)?._count || 0;
+      const unverified = results.find(r => !r.verified)?._count || 0;
+      return { total, verified, unverified };
+    }),
+
+    // Sensor statistics
+    prisma.sensor.groupBy({
+      by: ['is_active'],
+      _count: true
+    }).then(results => {
+      const total = results.reduce((sum, r) => sum + r._count, 0);
+      const active = results.find(r => r.is_active)?._count || 0;
+      const inactive = results.find(r => !r.is_active)?._count || 0;
+      return { total, active, inactive };
+    }),
+
+    // Transaction statistics
+    transactionService.getStatistics()
+  ]);
+
+  res.json({
+    measurements: measurementStats,
+    sensors: sensorStats,
+    transactions: txStats
+  });
 });
 
 app.listen(PORT, '0.0.0.0', async () => {
