@@ -88,19 +88,24 @@ fn validate_sensor_ranges(data: SensorData) -> Bool {
 }
 
 /// Valida la firma Ed25519 del ESP32
-/// Ed25519 firma el mensaje completo, no su hash SHA-256
+/// IMPORTANTE: Ed25519 firma el HASH SHA-256 del mensaje (no el mensaje completo)
+/// Este enfoque evita problemas con mensajes que contienen bytes nulos
 fn verify_signature(data: SensorData) -> Bool {
   // 1. Construir el mensaje con campos ordenados alfabéticamente
   let message = build_message(data)
 
-  // 2. Verificar que la firma Ed25519 es válida
+  // 2. Calcular el hash SHA-256 del mensaje
+  // Esto evita problemas de validación con bytes nulos en el mensaje
+  let message_hash = builtin.sha2_256(message)
+
+  // 3. Verificar que la firma Ed25519 es válida sobre el HASH
   // Esta función retorna True si:
-  // - La firma corresponde al mensaje
+  // - La firma corresponde al hash del mensaje
   // - Fue firmada con la clave privada correspondiente a public_key
   // - Las longitudes son correctas (32 bytes public_key, 64 bytes signature)
   verify_ed25519_signature(
     data.public_key,
-    message,
+    message_hash,
     data.signature,
   )
 }

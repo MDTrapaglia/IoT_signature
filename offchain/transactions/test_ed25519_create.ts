@@ -10,6 +10,7 @@ import {
 import dotenv from "dotenv"
 import fs from "fs"
 import nacl from "tweetnacl"
+import crypto from "crypto"
 
 dotenv.config()
 
@@ -32,8 +33,8 @@ const wallet = new MeshWallet({
     },
 });
 
-// Código compilado del validador simple_ed25519
-const simple_ed25519_code = "58bb01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144ca60026016003300b300c001acc004cdc3a400060106ea80122b300130093754009149a2c80522c80392225980099b8748000c02cdd500144ca60026eb8c03cc040c040c034dd5000cdd7180798069baa0019bae300f3010300d3754002b95180718061baa0028b201418041baa0028b200c180380098019baa0078a4d1365640041"
+// Código compilado del validador simple_ed25519 (con hash SHA-256)
+const simple_ed25519_code = "58bd01010029800aba2aba1aab9faab9eaab9dab9a48888896600264653001300700198039804000cc01c0092225980099b8748008c01cdd500144ca60026016003300b300c001acc004cdc3a400060106ea80122b300130093754009149a2c80522c80392225980099b8748000c02cdd500144ca60026eb8c03cc040c040c034dd5000cdc91bae300f300d3754003375c601e6020601a6ea800572a300e300c37540051640283008375400516401830070013003375400f149a26cac80081"
 
 const script: PlutusScript = {
     code: applyCborEncoding(simple_ed25519_code),
@@ -67,7 +68,7 @@ function buildMessage(sensor_id: string, temperature: number, humidity: number, 
 
 async function main() {
     console.log("=".repeat(60))
-    console.log("Crear UTXO con Validador Ed25519 - MENSAJE CONSTRUIDO")
+    console.log("Crear UTXO con Validador Ed25519 - FIRMA SOBRE HASH SHA-256")
     console.log("=".repeat(60))
 
     const walletAddr = await wallet.getChangeAddress();
@@ -95,8 +96,13 @@ async function main() {
     const message = buildMessage(sensor_id, temperature, humidity, timestamp);
     const messageHex = message.toString('hex');
 
-    // Firmar mensaje
-    const signature = nacl.sign.detached(message, secretKeyBytes);
+    // Calcular hash SHA-256 del mensaje
+    // IMPORTANTE: Ed25519 firma el HASH, no el mensaje completo
+    // Esto evita problemas con bytes nulos en mensajes binarios
+    const messageHash = crypto.createHash('sha256').update(message).digest();
+
+    // Firmar el HASH del mensaje
+    const signature = nacl.sign.detached(messageHash, secretKeyBytes);
 
     // Convertir a hex
     const publicKeyHex = Buffer.from(publicKeyBytes).toString('hex');
@@ -109,12 +115,13 @@ async function main() {
     console.log(`  Humidity: ${humidity / 10}%`)
     console.log(`  Timestamp: ${new Date(timestamp).toISOString()}`)
     console.log(`\n  Message (constructed, ${message.length} bytes): ${messageHex}`)
+    console.log(`  Message Hash (SHA-256): ${messageHash.toString('hex')}`)
     console.log(`  Signature (64 bytes): ${signatureHex}`)
     console.log(`  ✅ Firma generada y válida`)
 
-    // Verificar localmente que la firma es válida
-    const isValid = nacl.sign.detached.verify(message, signature, publicKeyBytes);
-    console.log(`  ✅ Verificación local: ${isValid ? 'VÁLIDA' : 'INVÁLIDA'}`)
+    // Verificar localmente que la firma es válida (sobre el HASH)
+    const isValid = nacl.sign.detached.verify(messageHash, signature, publicKeyBytes);
+    console.log(`  ✅ Verificación local (hash): ${isValid ? 'VÁLIDA' : 'INVÁLIDA'}`)
 
     // Crear datum con mensaje, firma y clave pública
     // Ed25519Data { message: ByteArray, signature: ByteArray, public_key: VerificationKey }

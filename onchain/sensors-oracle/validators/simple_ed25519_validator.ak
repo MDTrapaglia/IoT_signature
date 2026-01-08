@@ -1,3 +1,4 @@
+use aiken/builtin
 use aiken/crypto.{VerificationKey, verify_ed25519_signature}
 use cardano/transaction.{OutputReference, Transaction}
 
@@ -9,13 +10,16 @@ pub type Ed25519Data {
   public_key: VerificationKey,
 }
 
-/// Validador simple: solo verifica firma Ed25519
+/// Validador simple: solo verifica firma Ed25519 sobre hash SHA-256
 ///
 /// Este validador es para PROBAR si MeshJS puede consumir UTXOs
 /// con Ed25519 en PlutusV3.
 ///
+/// IMPORTANTE: Verifica firma sobre el HASH SHA-256 del mensaje
+/// Esto evita problemas con mensajes que contienen bytes nulos
+///
 /// Verificaciones:
-/// - Firma Ed25519 válida
+/// - Firma Ed25519 válida sobre hash SHA-256
 /// - Sin lógica de negocio compleja
 validator simple_ed25519 {
   spend(
@@ -26,10 +30,13 @@ validator simple_ed25519 {
   ) -> Bool {
     expect Some(data) = datum
 
-    // Verificar que la firma sea válida
+    // Calcular hash SHA-256 del mensaje
+    let message_hash = builtin.sha2_256(data.message)
+
+    // Verificar que la firma sea válida sobre el HASH
     verify_ed25519_signature(
       data.public_key,
-      data.message,
+      message_hash,
       data.signature,
     )
   }

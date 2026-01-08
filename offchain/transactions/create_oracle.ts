@@ -11,6 +11,7 @@ import {
 } from "@meshsdk/core"
 import dotenv from "dotenv"
 import nacl from "tweetnacl"
+import crypto from "crypto"
 dotenv.config()
 
 // Código compilado del validador sensor_oracle_ed25519 desde plutus.json
@@ -81,11 +82,15 @@ export function generateSignedSensorData(
     // Construir mensaje
     const message = buildMessage(tempData);
 
+    // IMPORTANTE: Firmar el HASH SHA-256 del mensaje (no el mensaje completo)
+    // Esto evita problemas con mensajes que contienen bytes nulos
+    const messageHash = crypto.createHash('sha256').update(message).digest();
+
     // Generar par de claves Ed25519
     const keyPair = nacl.sign.keyPair();
 
-    // Firmar mensaje
-    const signature = nacl.sign.detached(message, keyPair.secretKey);
+    // Firmar el HASH del mensaje
+    const signature = nacl.sign.detached(messageHash, keyPair.secretKey);
 
     // Convertir a hex
     const publicKeyHex = Buffer.from(keyPair.publicKey).toString('hex');

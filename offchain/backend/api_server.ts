@@ -116,9 +116,11 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
   }
 
   // Verificar firma Ed25519
-  // IMPORTANTE: Ed25519 firma el MENSAJE COMPLETO, no el hash SHA-256
-  // Esto debe coincidir con lo que espera el smart contract sensor_oracle_ed25519.ak
-  const isValid = verifyEd25519Signature(message, payload.signature, payload.publicKey);
+  // IMPORTANTE: Ed25519 firma el HASH SHA-256 del mensaje (no el mensaje completo)
+  // Esto evita problemas con mensajes que contienen bytes nulos
+  // Debe coincidir con lo que espera el smart contract sensor_oracle_ed25519.ak
+  const messageHash = Buffer.from(payload.hash, 'hex');
+  const isValid = verifyEd25519Signature(messageHash, payload.signature, payload.publicKey);
 
   if (!isValid) {
     console.log(`❌ Firma Ed25519 inválida para sensor ${payload.sensor_id}`);
