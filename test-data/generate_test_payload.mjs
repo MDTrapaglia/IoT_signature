@@ -32,14 +32,15 @@ const timestamp = Date.now();
 // Construir mensaje
 const message = buildMessage(sensor_id, temperature, humidity, timestamp);
 
-// Calcular hash SHA-256 del mensaje
+// Calcular hash SHA-256 del mensaje (solo para incluirlo en el payload)
 const hash = crypto.createHash('sha256').update(message).digest();
 
 // Generar par de claves Ed25519
 const keyPair = nacl.sign.keyPair();
 
-// Firmar el HASH (no el mensaje completo)
-const signature = nacl.sign.detached(hash, keyPair.secretKey);
+// IMPORTANTE: Ed25519 firma el MENSAJE COMPLETO (no el hash)
+// Esto debe coincidir con lo que espera el smart contract
+const signature = nacl.sign.detached(message, keyPair.secretKey);
 
 // Convertir a hex
 const hashHex = hash.toString('hex');
