@@ -4,7 +4,7 @@
  * Initializes a new oracle with NFT and initial sensor data
  */
 
-import { Blockfrost, Lucid, Data, applyParamsToScript, Constr } from "@lucid-evolution/lucid";
+import { Blockfrost, Lucid, Data, applyParamsToScript, Constr, validatorToAddress } from "@lucid-evolution/lucid";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import dotenv from "dotenv";
@@ -153,7 +153,7 @@ async function main() {
     const oracleScript = applyParamsToScript(oracleValidator.compiledCode, [paramsData]);
 
     // Calculate script address
-    const scriptAddress = (lucid as any).utils.validatorToAddress({
+    const scriptAddress = validatorToAddress("Preprod", {
         type: "PlutusV3",
         script: oracleScript
     });
@@ -192,7 +192,7 @@ async function main() {
     // Build transaction
     const tx = await lucid
         .newTx()
-        .payToContract(scriptAddress, { inline: datum }, {
+        .pay.ToContract(scriptAddress, { kind: "inline", value: datum }, {
             lovelace: BigInt(2000000),
             [nftUnit]: BigInt(1)
         })
@@ -200,7 +200,7 @@ async function main() {
 
     console.log(`  ✅ Transaction built`);
     console.log(`  🔄 Signing...`);
-    const signedTx = await tx.sign().complete();
+    const signedTx = await tx.sign.withWallet().complete();
 
     console.log(`  🔄 Submitting...`);
     const txHash = await signedTx.submit();

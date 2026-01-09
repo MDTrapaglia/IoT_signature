@@ -4,7 +4,7 @@
  * Spends the oracle UTXO and returns funds to wallet
  */
 
-import { Blockfrost, Lucid, Data, applyParamsToScript, Constr } from "@lucid-evolution/lucid";
+import { Blockfrost, Lucid, Data, applyParamsToScript, Constr, validatorToAddress } from "@lucid-evolution/lucid";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import dotenv from "dotenv";
@@ -97,7 +97,7 @@ async function main() {
     const oracleScript = applyParamsToScript(oracleValidator.compiledCode, [paramsData]);
 
     // Calculate script address (same as create_oracle_lucid.ts and update_oracle_lucid.ts)
-    const oracleScriptAddr = (lucid as any).utils.validatorToAddress({
+    const oracleScriptAddr = validatorToAddress("Preprod", {
         type: "PlutusV3",
         script: oracleScript
     });
@@ -139,7 +139,7 @@ async function main() {
 
     console.log(`  ✅ Transaction built`);
     console.log(`  🔄 Signing...`);
-    const signedTx = await tx.sign().complete();
+    const signedTx = await tx.sign.withWallet().complete();
 
     console.log(`  🔄 Submitting...`);
     const txHash = await signedTx.submit();

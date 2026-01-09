@@ -4,7 +4,7 @@
  * Creates a unique NFT for identifying a sensor oracle
  */
 
-import { Blockfrost, Lucid, Data, applyParamsToScript, Constr } from "@lucid-evolution/lucid";
+import { Blockfrost, Lucid, Data, applyParamsToScript, Constr, mintingPolicyToId } from "@lucid-evolution/lucid";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import dotenv from "dotenv";
@@ -56,13 +56,15 @@ async function main() {
     const walletAddr = await (lucid as any).wallet().address();
     console.log("  ✅ Wallet loaded:", walletAddr.substring(0, 20) + "...");
 
-    // Get UTXOs
+    // Get UTXOs and collateral
     const utxos = await (lucid as any).wallet().getUtxos();
+    const collateral = await (lucid as any).wallet().getUtxosCore();
+
     if (!utxos || utxos.length === 0) {
         throw new Error("No UTXOs available in wallet");
     }
 
-    // Select the first UTXO (non-collateral)
+    // Select the first UTXO for minting params
     const ownerUtxo = utxos[0];
     console.log(`\n📦 Selected UTXO: ${ownerUtxo.txHash}#${ownerUtxo.outputIndex}`);
 
@@ -74,43 +76,39 @@ async function main() {
     console.log(`  Token Name (hex): ${tokenNameHex}`);
 
     // Apply parameters to script: utxo_ref and token_name
-    const paramsData = Data.to(new Constr(0, [
-        new Constr(0, [ownerUtxo.txHash, BigInt(ownerUtxo.outputIndex)]),
-        Buffer.from(token_name, 'utf8').toString('hex')
-    ]));
+    // Each parameter must be serialized with Data.to()
+    const utxoRefData = Data.to(new Constr(0, [ownerUtxo.txHash, BigInt(ownerUtxo.outputIndex)]));
+    const tokenNameData = Data.to(tokenNameHex);  // Hex string for ByteArray
 
-    const mintingScript = applyParamsToScript(nft_code, [paramsData]);
+    const mintingScript = applyParamsToScript(nft_code, [utxoRefData, tokenNameData]);
 
-    // Calculate policy ID
-    const { fromText } = await import("@lucid-evolution/utils");
-    const mintingPolicy = (lucid as any).utils.mintingPolicyToId({
-        type: "PlutusV3",
-        script: mintingScript
-    });
-
-    console.log(`\n🔨 Minting NFT...`);
-    console.log(`  Policy ID: ${mintingPolicy}`);
-
-    const nftUnit = mintingPolicy + tokenNameHex;
-
-    // Build minting transaction
-    const redeemer = Data.to(new Constr(0, []));
-
-    const validator = {
-        type: "PlutusV3",
+    // Create minting policy object
+    const mintingPolicy = {
+        type: "PlutusV3" as const,
         script: mintingScript
     };
+
+    // Calculate policy ID
+    const policyId = mintingPolicyToId(mintingPolicy);
+
+    console.log(`\n🔨 Minting NFT...`);
+    console.log(`  Policy ID: ${policyId}`);
+
+    const nftUnit = policyId + tokenNameHex;
+
+    // Build minting transaction with redeemer
+    const redeemer = Data.to(new Constr(0, []));
 
     const tx = await lucid
         .newTx()
         .collectFrom([ownerUtxo]) // Must spend the UTXO used in parameters
+        .attach.MintingPolicy(mintingPolicy)
         .mintAssets({ [nftUnit]: BigInt(1) }, redeemer)
-        .attach.MintingPolicy(validator)
         .complete();
 
     console.log(`  ✅ Transaction built`);
     console.log(`  🔄 Signing...`);
-    const signedTx = await tx.sign().complete();
+    const signedTx = await tx.sign.withWallet().complete();
 
     console.log(`  🔄 Submitting...`);
     const txHash = await signedTx.submit();
@@ -119,7 +117,7 @@ async function main() {
     console.log(`  Tx Hash: ${txHash}`);
     console.log(`  Explorer: https://preprod.cardanoscan.io/transaction/${txHash}`);
     console.log(`\n📋 NFT Details:`);
-    console.log(`  Policy ID: ${mintingPolicy}`);
+    console.log(`  Policy ID: ${policyId}`);
     console.log(`  Asset Name: ${tokenNameHex}`);
     console.log(`  Full Unit: ${nftUnit}`);
     console.log(`\nℹ️  Save these values to use when creating the oracle!`);
