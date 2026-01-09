@@ -24,12 +24,14 @@ pub type OracleRedeemer {
   Delete
 }
 
-// Oracle's Datum - Simplified to avoid MeshJS serialization issues
-// The message contains the sensor data fields in binary format
+// Oracle's Datum - Contains sensor readings and Ed25519 signature
 pub type SensorData {
-  message: ByteArray,     // Constructed message: humidity || sensor_id || temperature || timestamp
-  signature: ByteArray,   // Ed25519 signature from ESP32 (64 bytes)
-  public_key: ByteArray,  // Ed25519 public key from ESP32 (32 bytes)
+  sensor_id: ByteArray,      // Sensor identifier
+  temperature: Int,          // Temperature * 10 (e.g., 235 = 23.5°C)
+  humidity: Int,             // Humidity * 10 (e.g., 652 = 65.2%)
+  timestamp: Int,            // Unix timestamp in milliseconds
+  signature: ByteArray,      // Ed25519 signature from ESP32 (64 bytes)
+  public_key: ByteArray,     // Ed25519 public key from ESP32 (32 bytes)
 }
 
 /// Convierte un entero a ByteArray (8 bytes big-endian con signo)

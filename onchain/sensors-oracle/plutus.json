@@ -59,6 +59,194 @@
       "hash": "e659c328b17c189898d2e763c4982a0787ccb1474c096b482ec78594"
     },
     {
+      "title": "nft_v1_always_true.nft_v1_always_true.mint",
+      "redeemer": {
+        "title": "_r",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58590101002229800aba2aba1aab9eaab9dab9a9bae00248888896600264653001300700198039804000cc01c0092225980099b8748000c020dd500144c9289bae300a3009375400516401c30070013004375400f149a26cac8011",
+      "hash": "259d4dc56cd0e0d4a38b228484e8c4f2dd3a48f4860120fd6c034240"
+    },
+    {
+      "title": "nft_v1_always_true.nft_v1_always_true.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58590101002229800aba2aba1aab9eaab9dab9a9bae00248888896600264653001300700198039804000cc01c0092225980099b8748000c020dd500144c9289bae300a3009375400516401c30070013004375400f149a26cac8011",
+      "hash": "259d4dc56cd0e0d4a38b228484e8c4f2dd3a48f4860120fd6c034240"
+    },
+    {
+      "title": "nft_v2_check_quantity.nft_v2_check_quantity.mint",
+      "redeemer": {
+        "title": "_r",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58cd0101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa001899192cc004c0340062b30013370e90011bad300a300c0018a518b20108b20163232330010013756601a601c601c601c601c60166ea8c03401c896600200300389919912cc004cdc8803801456600266e3c01c00a20030064035133005005301200440346eb8c030004dd598068009807000a01a14bd6f7b6301bae300a30083754003164018601000260106012002601000260086ea802229344d9590021",
+      "hash": "b42828e5fb014791fa9b553b790086f1a6fbaeedbb3304ab6cda73e6"
+    },
+    {
+      "title": "nft_v2_check_quantity.nft_v2_check_quantity.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58cd0101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa001899192cc004c0340062b30013370e90011bad300a300c0018a518b20108b20163232330010013756601a601c601c601c601c60166ea8c03401c896600200300389919912cc004cdc8803801456600266e3c01c00a20030064035133005005301200440346eb8c030004dd598068009807000a01a14bd6f7b6301bae300a30083754003164018601000260106012002601000260086ea802229344d9590021",
+      "hash": "b42828e5fb014791fa9b553b790086f1a6fbaeedbb3304ab6cda73e6"
+    },
+    {
+      "title": "nft_v3_check_utxo.nft_v3_check_utxo.mint",
+      "redeemer": {
+        "title": "_r",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "588b0101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa00189991198008009bac300c300a3754601800c6eb8c028c020dd5000912cc00400629422b30013375e601860146ea8c0300040422946266004004601a002804100b459006180400098041804800980400098021baa0088a4d1365640081",
+      "hash": "db9c40fc23649f9533e3718cdd3c86681280d7c6c4d08345017207d8"
+    },
+    {
+      "title": "nft_v3_check_utxo.nft_v3_check_utxo.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "588b0101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa00189991198008009bac300c300a3754601800c6eb8c028c020dd5000912cc00400629422b30013375e601860146ea8c0300040422946266004004601a002804100b459006180400098041804800980400098021baa0088a4d1365640081",
+      "hash": "db9c40fc23649f9533e3718cdd3c86681280d7c6c4d08345017207d8"
+    },
+    {
+      "title": "nft_v4_check_name.nft_v4_check_name.mint",
+      "redeemer": {
+        "title": "_r",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58d80101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa001899192cc004c034006264b30013370e90011bad300b001899b8f375c6014002011164024601800316402c6464660020026eacc034c038c038c038c038c02cdd51806803912cc00400600713233225980099b910070028acc004cdc78038014400600c806a26600a00a60240088068dd718060009bab300d001300e0014034297adef6c60375c601460106ea80062c8030c020004c020c024004c020004c010dd5004452689b2b200401",
+      "hash": "58d1afcecef4ec417908fcb9658edcfb61095265d59399e37ccf2613"
+    },
+    {
+      "title": "nft_v4_check_name.nft_v4_check_name.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "utxo_ref",
+          "schema": {
+            "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+          }
+        },
+        {
+          "title": "token_name",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "58d80101002229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900018039baa001899192cc004c034006264b30013370e90011bad300b001899b8f375c6014002011164024601800316402c6464660020026eacc034c038c038c038c038c02cdd51806803912cc00400600713233225980099b910070028acc004cdc78038014400600c806a26600a00a60240088068dd718060009bab300d001300e0014034297adef6c60375c601460106ea80062c8030c020004c020c024004c020004c010dd5004452689b2b200401",
+      "hash": "58d1afcecef4ec417908fcb9658edcfb61095265d59399e37ccf2613"
+    },
+    {
       "title": "sensor_oracle_ed25519.sensor_oracle_ed25519.spend",
       "datum": {
         "title": "_datum",

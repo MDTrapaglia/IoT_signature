@@ -89,10 +89,11 @@ async function main() {
     }
 
     // Apply parameters: OracleParams { nft: AssetClass, operator }
-    const paramsData = Data.to(new Constr(0, [
+    // IMPORTANT: Do NOT use Data.to() for parameters - pass Constr directly
+    const paramsData = new Constr(0, [
         new Constr(0, [nftPolicyId, nftAssetName]), // AssetClass
         operatorPubKeyHash
-    ]));
+    ]);
 
     const oracleScript = applyParamsToScript(oracleValidator.compiledCode, [paramsData]);
 
@@ -126,7 +127,7 @@ async function main() {
 
     // Build transaction
     const validator = {
-        type: "PlutusV3",
+        type: "PlutusV3" as const,
         script: oracleScript
     };
 
