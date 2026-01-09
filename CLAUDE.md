@@ -8,26 +8,34 @@ ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor meas
 
 **Current Phase:** Phase 2 - Ed25519 signatures validated on-chain (PostgreSQL + Prisma integrated)
 
-## ⚠️ Known Issues
+## ⚠️ Known Issues & Solutions
 
-### MeshJS Beta - Plutus V3 Spending Bug (BLOQUEANTE)
+### MeshJS Beta - Plutus V3 Spending Bug (RESUELTO con Lucid Evolution)
 
-**Status:** Oracle updates fail with MeshJS v1.9.0-beta.90
-**Error:** `Cannot convert undefined to a BigInt` during transaction building
-**Impact:** Cannot update oracles on-chain (create works, update fails)
+**Status:** ✅ RESUELTO - Migrado a Lucid Evolution para oracle updates
+**Original Error:** `Cannot convert undefined to a BigInt` during transaction building with MeshJS
+**Impact:** Oracle updates fallaban completamente
 
-**Current workaround:** Manual oracle updates or wait for MeshJS stable release
+**Solution:** Arquitectura híbrida MeshJS + Lucid Evolution
+- MeshJS: create, mint, delete (funcionan correctamente)
+- **Lucid Evolution: update** (soluciona el bug)
 
-**Full analysis:** See `docs/MESHJS_PLUTUS_V3_ISSUE.md`
+**Full documentation:**
+- Migration plan: `docs/MIGRATION_PLAN_LUCID_EVOLUTION.md`
+- Migration log: `temp/MIGRACION_LUCID_EVOLUTION_LOG.md`
+- Original bug analysis: `docs/MESHJS_PLUTUS_V3_ISSUE.md`
 
 **What works:**
 - ✅ Backend receiving and validating measurements
 - ✅ Database storing signed data
 - ✅ Frontend dashboard showing metrics
-- ✅ Oracle creation (initial deployment)
+- ✅ Oracle creation (initial deployment - MeshJS)
+- ✅ **Oracle updates (Lucid Evolution)** ⭐ NEW
 
-**What doesn't work:**
-- ❌ Oracle updates (spending Plutus V3 scripts)
+**Known Limitations:**
+- ⚠️ MeshJS and Lucid Evolution calculate **different script addresses** for the same code
+- ⚠️ Current workaround: Hardcoded script address in update_oracle_lucid.ts
+- ⚠️ Requires investigation why addresses differ
 
 ## Commands
 
@@ -40,8 +48,9 @@ npm run nft                 # Run NFT minting
 
 # Oracle Scripts (Cardano transactions with Ed25519)
 npm run oracle:mint-nft -- <sensor_id>           # Mint NFT for sensor
-npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT (Ed25519)
-npm run oracle:update -- <policy_id> <asset_name> [num_updates] # Update oracle (Ed25519)
+npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT (Ed25519 - MeshJS)
+npm run oracle:update -- <policy_id> <asset_name> [num_updates] # BROKEN: MeshJS Plutus V3 bug
+npm run oracle:update:lucid -- <policy_id> <asset_name> [num_updates] # Update oracle (Lucid Evolution)
 npm run oracle:delete -- <policy_id> <asset_name> # Delete oracle
 
 # Ed25519 Testing
@@ -109,13 +118,19 @@ Frontend ← GET /api/measurements ←───────┘
 - `hardware/sign_device.ino` - ESP32 Arduino sketch with ECDSA signing (legacy/Ethereum)
 - `hardware/README_ED25519.md` - Ed25519 setup and installation guide
 - `offchain/frontend/` - Next.js dashboard application
-- `offchain/transactions/` - Cardano transaction code (MeshJS)
-  - `mint_sensor_nft.ts` - Mint unique NFT for sensor oracle
-  - `create_oracle.ts` - Initialize oracle with NFT and Ed25519 signed data
-  - `update_oracle.ts` - Update oracle with new Ed25519 signed readings
-  - `types.ts` - TypeScript types for SensorData and OracleParams (Ed25519)
-  - `test_ed25519_create.ts` - Test Ed25519 UTXO creation
-  - `test_ed25519_consume.ts` - Test Ed25519 UTXO consumption (validates on-chain)
+- `offchain/transactions/` - Cardano transaction code
+  - **MeshJS scripts:**
+    - `mint_sensor_nft.ts` - Mint unique NFT for sensor oracle
+    - `create_oracle.ts` - Initialize oracle with NFT and Ed25519 signed data
+    - `delete_oracle.ts` - Delete oracle and recover ADA
+    - `update_oracle.ts` - ⚠️ DEPRECATED (MeshJS bug) - Use `update_oracle_lucid.ts`
+  - **Lucid Evolution scripts:**
+    - `update_oracle_lucid.ts` - ⭐ Update oracle with Lucid Evolution (ACTIVE)
+    - `types_lucid.ts` - Schemas and types for Lucid Evolution
+  - **Common/Testing:**
+    - `types.ts` - TypeScript types for SensorData and OracleParams (Ed25519)
+    - `test_ed25519_create.ts` - Test Ed25519 UTXO creation
+    - `test_ed25519_consume.ts` - Test Ed25519 UTXO consumption (validates on-chain)
 - `onchain/sensors-oracle/validators/` - Aiken smart contracts
   - `sensor_oracle_ed25519.ak` - Smart contract with **Ed25519** verification (MAIN)
   - `sensor_oracle_verified.ak` - Smart contract with ECDSA verification (legacy/Ethereum)

@@ -1,22 +1,29 @@
 # Estado del Proyecto ESP32 IoT Certification System
 
-**Fecha:** 2026-01-08
-**Versión:** v0.2.0-beta
+**Fecha:** 2026-01-09 (Actualizado)
+**Versión:** v0.3.0-beta
 **Red:** Cardano Preprod Testnet
 
 ---
 
 ## 📊 Resumen Ejecutivo
 
-El sistema de certificación de datos IoT con firmas Ed25519 está **funcionalmente completo en la capa offchain** y parcialmente funcional en la capa on-chain.
+El sistema de certificación de datos IoT con firmas Ed25519 está **funcionalmente completo** con arquitectura híbrida MeshJS + Lucid Evolution.
 
-### Estado General: 🟡 FUNCIONAL CON LIMITACIÓN
+### Estado General: 🟢 FUNCIONAL (con testing pendiente)
 
 - ✅ **Sistema Offchain:** 100% operativo
 - ✅ **Firma y Validación:** 100% operativo
 - ✅ **Base de Datos:** 100% operativo
 - ✅ **Frontend Dashboard:** 100% operativo
-- ⚠️ **On-Chain Oracle:** Creado OK, actualizaciones bloqueadas
+- ✅ **On-Chain Oracle:** Implementación completa con Lucid Evolution
+
+### 🆕 Novedades (2026-01-09)
+
+- ✅ **Migración completada:** Oracle updates ahora usan Lucid Evolution
+- ✅ **Arquitectura híbrida:** MeshJS para create/mint/delete + Lucid Evolution para updates
+- ⚠️ **Testing pendiente:** Requiere crear oracle nuevo y validar update on-chain
+- ⚠️ **Incompatibilidad conocida:** MeshJS y Lucid calculan direcciones de script diferentes
 
 ---
 
@@ -229,29 +236,43 @@ curl -X POST http://localhost:3001/api/ingest \
 
 ## 🎯 Próximos Pasos
 
-### Corto Plazo (Esta Semana)
+### Completado Recientemente ✅
 
-1. **Decisión sobre MeshJS:**
-   - [ ] Esperar release stable de MeshJS, O
-   - [ ] Migrar a Lucid Evolution
+1. **Migración a Lucid Evolution:**
+   - [x] Migrar `update_oracle.ts` a Lucid Evolution
+   - [x] Crear `update_oracle_lucid.ts` con soporte CLI
+   - [x] Crear `types_lucid.ts` con schemas Lucid
+   - [x] Agregar script `oracle:update:lucid` a package.json
+   - [x] Documentar migración en `temp/MIGRACION_LUCID_EVOLUTION_LOG.md`
+   - [x] Actualizar CLAUDE.md con instrucciones
 
 2. **Monitoreo:**
    - [x] Sistema offchain operativo
    - [x] Base de datos almacenando mediciones
    - [x] Frontend mostrando métricas
 
+### Corto Plazo (Esta Semana)
+
+1. **Finalizar Testing de Lucid Evolution:**
+   - [ ] Crear oracle con MeshJS usando nuevo NFT
+   - [ ] Ejecutar update exitoso con Lucid Evolution
+   - [ ] Verificar transacción on-chain
+   - [ ] Actualizar auto-submission service para usar Lucid
+
+2. **Resolver incompatibilidad de direcciones:**
+   - [ ] Investigar por qué MeshJS y Lucid calculan direcciones diferentes
+   - [ ] Documentar diferencias encontradas
+   - [ ] Considerar migrar create_oracle a Lucid si es necesario
+
 ### Medio Plazo (2-4 Semanas)
 
-1. **Resolver actualizaciones on-chain:**
-   - [ ] Migrar `update_oracle.ts` a Lucid Evolution, O
-   - [ ] Actualizar MeshJS cuando salga stable
-
-2. **Testing:**
+1. **Testing:**
    - [ ] Pruebas de carga con múltiples sensores
-   - [ ] Validación end-to-end completa
+   - [ ] Validación end-to-end completa con oracle updates
+   - [ ] Testing de auto-submission con Lucid Evolution
 
-3. **Optimizaciones:**
-   - [ ] Auto-submission periódico (cuando updates funcionen)
+2. **Optimizaciones:**
+   - [x] Auto-submission periódico implementado (pendiente activar)
    - [ ] Alertas por mediciones fuera de rango
    - [ ] Dashboard mejorado con gráficos
 

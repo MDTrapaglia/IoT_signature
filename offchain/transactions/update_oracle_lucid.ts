@@ -56,13 +56,116 @@ function buildMessage(data: { humidity: number, sensor_id: string, temperature: 
     return Buffer.concat([humidityBytes, sensorIdBytes, temperatureBytes, timestampBytes]);
 }
 
+async function performUpdate(
+    lucid: any,
+    nftPolicyId: string,
+    nftAssetName: string,
+    operatorPubKeyHash: string,
+    oracleScript: string,
+    oracleScriptAddr: string,
+    updateNumber: number
+) {
+    console.log(`\n${"=".repeat(70)}`);
+    console.log(`Update #${updateNumber}`);
+    console.log("=".repeat(70));
+
+    // Find oracle UTXO
+    const scriptUtxos = await (lucid as any).utxosAt(oracleScriptAddr);
+    const nftUnit = `${nftPolicyId}${nftAssetName}`;
+
+    const oracleUtxo = scriptUtxos.find((utxo: any) =>
+        utxo.assets[nftUnit] === BigInt(1)
+    );
+
+    if (!oracleUtxo) {
+        throw new Error("Oracle UTXO not found");
+    }
+
+    console.log(`✓ Found oracle UTXO: ${oracleUtxo.txHash}#${oracleUtxo.outputIndex}`);
+
+    // Generate fresh sensor data and signature
+    const sensorData = {
+        sensor_id: "ESP32_001",
+        temperature: 235 + (updateNumber % 10), // Vary temperature slightly
+        humidity: 652 + (updateNumber % 10),
+        timestamp: Date.now()
+    };
+
+    const message = buildMessage(sensorData);
+    const messageHash = crypto.createHash('sha256').update(message).digest();
+    const keyPair = nacl.sign.keyPair();
+    const signature = nacl.sign.detached(messageHash, keyPair.secretKey);
+
+    console.log(`\n📊 New sensor data:`);
+    console.log(`  Temperature: ${sensorData.temperature / 10}°C`);
+    console.log(`  Humidity: ${sensorData.humidity / 10}%`);
+    console.log(`  Timestamp: ${new Date(sensorData.timestamp).toISOString()}`);
+
+    // Build new datum
+    const newDatum = Data.to({
+        sensor_id: Buffer.from(sensorData.sensor_id, 'utf8').toString('hex'),
+        temperature: BigInt(sensorData.temperature),
+        humidity: BigInt(sensorData.humidity),
+        timestamp: BigInt(sensorData.timestamp),
+        signature: Buffer.from(signature).toString('hex'),
+        public_key: Buffer.from(keyPair.publicKey).toString('hex')
+    }, SensorData);
+
+    // Build redeemer
+    const redeemer = OracleRedeemer.Update();
+
+    console.log(`\n🔄 Building transaction...`);
+
+    // Build transaction
+    const validator = {
+        type: "PlutusV3",
+        script: oracleScript
+    };
+
+    const tx = await lucid
+        .newTx()
+        .collectFrom([oracleUtxo], redeemer)
+        .attach.SpendingValidator(validator)
+        .payToContract(oracleScriptAddr, { inline: newDatum }, {
+            lovelace: BigInt(2000000),
+            [nftUnit]: BigInt(1)
+        })
+        .addSignerKey(operatorPubKeyHash)
+        .complete();
+
+    console.log(`  ✅ Transaction built`);
+    console.log(`  🔄 Signing...`);
+    const signedTx = await tx.sign().complete();
+
+    console.log(`  🔄 Submitting...`);
+    const txHash = await signedTx.submit();
+
+    console.log(`\n✅ SUCCESS!`);
+    console.log(`  Tx Hash: ${txHash}`);
+    console.log(`  Explorer: https://preprod.cardanoscan.io/transaction/${txHash}`);
+
+    return txHash;
+}
+
 async function main() {
-    const nftPolicyId = "a2f69dc8b380bbcf6b79d3e3b26097423c981df0bce0bd44d1e75de9";
-    const nftAssetName = "53454e534f525f45535033325f544553545f3030315f5632";
+    // Parse CLI arguments
+    const nftPolicyId = process.argv[2];
+    const nftAssetName = process.argv[3];
+    const numUpdates = parseInt(process.argv[4] || "1", 10);
+
+    if (!nftPolicyId || !nftAssetName) {
+        console.error("Usage: npm run oracle:update:lucid -- <nft_policy_id> <nft_asset_name> [num_updates]");
+        console.error("\nExample:");
+        console.error("  npm run oracle:update:lucid -- a2f69dc8b380bbcf6b79d3e3b26097423c981df0bce0bd44d1e75de9 SENSOR_ESP32_TEST_001_V2 3");
+        process.exit(1);
+    }
 
     console.log("=".repeat(70));
-    console.log("Update Oracle with Lucid");
+    console.log("Update Oracle with Lucid Evolution");
     console.log("=".repeat(70));
+    console.log(`NFT Policy ID: ${nftPolicyId}`);
+    console.log(`NFT Asset Name: ${nftAssetName}`);
+    console.log(`Number of updates: ${numUpdates}`);
 
     // Initialize Lucid
     const lucid = await Lucid(
@@ -79,8 +182,10 @@ async function main() {
         throw new Error("PRIVATE_KEY not found in .env");
     }
 
-    console.log("\n Loading wallet...");
-    const { C } = await import("@lucid-evolution/lucid");
+    console.log("\n🔑 Loading wallet...");
+
+    // Import lucid-cardano C module for key derivation
+    const { C } = await import("lucid-cardano");
     const rootKey = C.Bip32PrivateKey.from_bech32(meshPrivateKey);
     const harden = (num: number) => 0x80000000 + num;
     const accountKey = rootKey
@@ -89,17 +194,21 @@ async function main() {
         .derive(harden(0));
     const paymentKey = accountKey.derive(0).derive(0).to_raw_key();
     const paymentKeyBech32 = paymentKey.to_bech32();
-    lucid.selectWalletFromPrivateKey(paymentKeyBech32);
 
-    const walletAddr = await lucid.wallet.address();
-    console.log("  ✅ Wallet loaded");
+    // Select wallet using Lucid Evolution API
+    (lucid as any).selectWallet.fromPrivateKey(paymentKeyBech32);
 
-    // Get operator pub key hash
-    const paymentCredential = lucid.utils.getAddressDetails(walletAddr).paymentCredential;
-    if (!paymentCredential) {
+    const walletAddr = await (lucid as any).wallet().address();
+    console.log("  ✅ Wallet loaded:", walletAddr.substring(0, 20) + "...");
+
+    // Get operator pub key hash from address
+    // Import utils from @lucid-evolution/utils for getAddressDetails
+    const { getAddressDetails } = await import("@lucid-evolution/utils");
+    const addressDetails = getAddressDetails(walletAddr);
+    if (!addressDetails.paymentCredential) {
         throw new Error("Could not extract payment credential from wallet");
     }
-    const operatorPubKeyHash = paymentCredential.hash;
+    const operatorPubKeyHash = addressDetails.paymentCredential.hash;
 
     // Load and apply script params
     const plutusJsonPath = resolve(process.cwd(), "onchain/sensors-oracle/plutus.json");
@@ -119,85 +228,54 @@ async function main() {
     ]));
 
     const oracleScript = applyParamsToScript(oracleValidator.compiledCode, [paramsData]);
-    const oracleScriptAddr = lucid.utils.validatorToAddress({
-        type: "PlutusV3",
-        script: oracleScript
-    });
 
-    console.log(`\n🔍 Oracle Address: ${oracleScriptAddr}`);
+    // IMPORTANTE: MeshJS y Lucid calculan direcciones diferentes para el mismo script
+    // Usar la dirección registrada en la DB (creada con MeshJS)
+    // TODO: Investigar por qué las direcciones son diferentes
+    const oracleScriptAddr = "addr_test1wrlpxpuc0mzuh30frm8uharg200p8rrntwtnhkst7c7536c4ktu72";
 
-    // Find oracle UTXO
-    const scriptUtxos = await lucid.utxosAt(oracleScriptAddr);
-    const nftUnit = `${nftPolicyId}${nftAssetName}`;
+    console.log(`\n🔍 Oracle Address (from DB): ${oracleScriptAddr}`);
 
-    const oracleUtxo = scriptUtxos.find(utxo =>
-        utxo.assets[nftUnit] === BigInt(1)
-    );
+    // Perform updates
+    const txHashes: string[] = [];
+    for (let i = 1; i <= numUpdates; i++) {
+        try {
+            const txHash = await performUpdate(
+                lucid,
+                nftPolicyId,
+                nftAssetName,
+                operatorPubKeyHash,
+                oracleScript,
+                oracleScriptAddr,
+                i
+            );
+            txHashes.push(txHash);
 
-    if (!oracleUtxo) {
-        throw new Error("Oracle UTXO not found");
+            // Wait 30 seconds between updates (if more updates pending)
+            if (i < numUpdates) {
+                console.log(`\n⏳ Waiting 30 seconds before next update...`);
+                await new Promise(resolve => setTimeout(resolve, 30000));
+            }
+        } catch (error: any) {
+            console.error(`\n❌ Error in update #${i}:`, error.message || error);
+            if (i === 1) {
+                throw error; // Fail fast on first update
+            } else {
+                console.log(`Continuing with remaining updates...`);
+            }
+        }
     }
 
-    console.log(`✓ Found oracle UTXO: ${oracleUtxo.txHash}#${oracleUtxo.outputIndex}`);
-
-    // Generate fresh sensor data and signature
-    const sensorData = {
-        sensor_id: "ESP32_001",
-        temperature: 235,
-        humidity: 652,
-        timestamp: Date.now()
-    };
-
-    const message = buildMessage(sensorData);
-    const messageHash = crypto.createHash('sha256').update(message).digest();
-    const keyPair = nacl.sign.keyPair();
-    const signature = nacl.sign.detached(messageHash, keyPair.secretKey);
-
-    console.log(`\n📊 New sensor data:`);
-    console.log(`  Temperature: ${sensorData.temperature}`);
-    console.log(`  Humidity: ${sensorData.humidity}`);
-    console.log(`  Timestamp: ${sensorData.timestamp}`);
-
-    // Build new datum
-    const newDatum = Data.to({
-        sensor_id: Buffer.from(sensorData.sensor_id, 'utf8').toString('hex'),
-        temperature: BigInt(sensorData.temperature),
-        humidity: BigInt(sensorData.humidity),
-        timestamp: BigInt(sensorData.timestamp),
-        signature: Buffer.from(signature).toString('hex'),
-        public_key: Buffer.from(keyPair.publicKey).toString('hex')
-    }, SensorData);
-
-    // Build redeemer
-    const redeemer = OracleRedeemer.Update();
-
-    console.log(`\n🔄 Building transaction...`);
-
-    // Build transaction
-    const tx = await lucid
-        .newTx()
-        .collectFrom([oracleUtxo], redeemer)
-        .attachSpendingValidator({
-            type: "PlutusV3",
-            script: oracleScript
-        })
-        .payToContract(oracleScriptAddr, { inline: newDatum }, {
-            lovelace: BigInt(2000000),
-            [nftUnit]: BigInt(1)
-        })
-        .addSignerKey(operatorPubKeyHash)
-        .complete();
-
-    console.log(`  ✅ Transaction built`);
-    console.log(`  🔄 Signing...`);
-    const signedTx = await tx.sign().complete();
-
-    console.log(`  🔄 Submitting...`);
-    const txHash = await signedTx.submit();
-
-    console.log(`\n✅ SUCCESS!`);
-    console.log(`  Tx Hash: ${txHash}`);
-    console.log(`  Explorer: https://preprod.cardanoscan.io/transaction/${txHash}`);
+    // Summary
+    console.log(`\n${"=".repeat(70)}`);
+    console.log("Summary");
+    console.log("=".repeat(70));
+    console.log(`Total updates: ${txHashes.length}/${numUpdates}`);
+    console.log(`\nTransaction hashes:`);
+    txHashes.forEach((hash, idx) => {
+        console.log(`  ${idx + 1}. ${hash}`);
+        console.log(`     https://preprod.cardanoscan.io/transaction/${hash}`);
+    });
 }
 
 main().catch((error) => {
