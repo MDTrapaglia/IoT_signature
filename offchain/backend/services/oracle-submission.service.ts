@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { measurementService } from './measurement.service.js';
 import { sensorService } from './sensor.service.js';
 import { OracleTransactionStatus, OracleTransactionType } from '@prisma/client';
-import { updateOracle, type UpdateOracleParams, type SensorData } from '../../transactions/update_oracle.js';
+import { updateOracle, type OracleUpdateParams, type SensorData } from '../../transactions/oracle_lucid_lib.js';
 
 class OracleSubmissionService {
   private intervalId: NodeJS.Timeout | null = null;
@@ -147,11 +147,11 @@ class OracleSubmissionService {
         public_key: measurement.public_key
       };
 
-      // Call updateOracle() with refactored function
+      // Call updateOracle() with Lucid Evolution function
       try {
-        console.log(`📡 Calling updateOracle for sensor ${measurement.sensor_id}...`);
+        console.log(`📡 Calling updateOracle (Lucid Evolution) for sensor ${measurement.sensor_id}...`);
 
-        const params: UpdateOracleParams = {
+        const params: OracleUpdateParams = {
           blockfrostApiKey: process.env.BLOCKFROST_API_KEY || '',
           privateKey: process.env.PRIVATE_KEY || '',
           networkId: 0, // Preprod = 0, Mainnet = 1
