@@ -11,6 +11,7 @@
     "oracle:mint-nft": "tsx offchain/transactions/mint_sensor_nft.ts",
     "oracle:create": "tsx offchain/transactions/create_oracle.ts",
     "oracle:update": "tsx offchain/transactions/update_oracle.ts",
+    "oracle:delete": "tsx offchain/transactions/delete_oracle.ts",
     "wallet:balance": "tsx offchain/transactions/check_wallet_balance.ts",
     "test:ecdsa": "tsx offchain/transactions/test_ecdsa_onchain.ts",
     "test:ecdsa:meshjs": "tsx offchain/transactions/test_ecdsa_onchain_meshjs_v2.ts",
@@ -28,13 +29,19 @@
     "lint:fix": "eslint offchain/backend/**/*.ts offchain/transactions/**/*.ts --fix",
     "test": "npm run test:backend && npm run test:integration",
     "test:backend": "echo 'No unit tests yet - run npm run test:integration'",
-    "test:integration": "chmod +x scripts/test_signatures.sh && scripts/test_signatures.sh"
+    "test:integration": "chmod +x scripts/test_signatures.sh && scripts/test_signatures.sh",
+    "db:status": "tsx scripts/db_status.ts",
+    "db:clean-failed": "tsx scripts/db_clean_failed.ts",
+    "db:register-sensor": "tsx scripts/db_register_sensor.ts",
+    "setup:collateral": "tsx scripts/setup_collateral.ts",
+    "bug:meshjs": "tsx offchain/transactions/meshjs_plutus_v3_bug_minimal.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@lucid-evolution/lucid": "^0.4.29",
     "@meshsdk/core": "^1.9.0-beta.90",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",

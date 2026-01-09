@@ -15,14 +15,20 @@
 
 ## 🔧 Instalación de Librerías
 
-### 1. Librería Ed25519
+### 1. CycloneCRYPTO (Ed25519 + SHA-256)
+
+**IMPORTANTE**: El sketch necesita tanto Ed25519 como SHA-256 de la misma librería.
 
 **Opción A: Desde Arduino IDE (Recomendado)**
 
 1. Abrir Arduino IDE
 2. Ir a `Tools` → `Manage Libraries...`
-3. Buscar: **"Ed25519"**
-4. Instalar: **"Ed25519 by Oryx Embedded"**
+3. Buscar: **"CycloneCRYPTO"**
+4. Instalar: **"CycloneCRYPTO by Oryx Embedded"**
+
+Esta librería incluye:
+- `Ed25519.h` - Firmas Ed25519
+- `Sha256.h` - Hash SHA-256
 
 **Opción B: Manual**
 

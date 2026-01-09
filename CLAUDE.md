@@ -6,7 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor measurements from Arduino/ESP32 devices, cryptographically signs them with **Ed25519**, and uploads to Cardano. Three-layer architecture: hardware edge (Arduino), Node.js backend, Next.js frontend dashboard.
 
-**Current Phase:** Phase 2 - Ed25519 signatures validated on-chain (API in-memory storage, no database yet)
+**Current Phase:** Phase 2 - Ed25519 signatures validated on-chain (PostgreSQL + Prisma integrated)
+
+## ⚠️ Known Issues
+
+### MeshJS Beta - Plutus V3 Spending Bug (BLOQUEANTE)
+
+**Status:** Oracle updates fail with MeshJS v1.9.0-beta.90
+**Error:** `Cannot convert undefined to a BigInt` during transaction building
+**Impact:** Cannot update oracles on-chain (create works, update fails)
+
+**Current workaround:** Manual oracle updates or wait for MeshJS stable release
+
+**Full analysis:** See `docs/MESHJS_PLUTUS_V3_ISSUE.md`
+
+**What works:**
+- ✅ Backend receiving and validating measurements
+- ✅ Database storing signed data
+- ✅ Frontend dashboard showing metrics
+- ✅ Oracle creation (initial deployment)
+
+**What doesn't work:**
+- ❌ Oracle updates (spending Plutus V3 scripts)
 
 ## Commands
 
@@ -21,10 +42,16 @@ npm run nft                 # Run NFT minting
 npm run oracle:mint-nft -- <sensor_id>           # Mint NFT for sensor
 npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT (Ed25519)
 npm run oracle:update -- <policy_id> <asset_name> [num_updates] # Update oracle (Ed25519)
+npm run oracle:delete -- <policy_id> <asset_name> # Delete oracle
 
 # Ed25519 Testing
 npm run test:ed25519:create    # Create UTXO with Ed25519 signature
 npm run test:ed25519:consume   # Consume UTXO (validates on-chain)
+
+# Database Management
+npm run db:status              # Check database status (measurements, sensors, transactions)
+npm run db:clean-failed        # Clean failed transactions from database
+npm run db:register-sensor -- <sensor_id> <public_key> [nft_policy_id] [nft_asset_name] [script_address]
 
 # Shell scripts
 ./scripts/backend_start.sh  # Start server (kills previous, saves PID to .dev.pid)
@@ -100,16 +127,22 @@ Frontend ← GET /api/measurements ←───────┘
 ### Data Model
 
 ```typescript
-interface ArduinoPayload {
+// Current model (Ed25519)
+interface SensorData {
   sensor_id: string;
-  hash: string;        // SHA-256 hash of the message
-  signature: string;   // ECDSA signature (hex)
-  publicKey: string;   // secp256k1 public key (hex)
+  temperature: number;   // Temperatura * 10 (ej: 23.5°C = 235)
+  humidity: number;      // Humedad * 10 (ej: 65.2% = 652)
+  timestamp: number;     // Unix timestamp en milisegundos
+  signature: string;     // Ed25519 signature (64 bytes hex = 128 chars)
+  public_key: string;    // Ed25519 public key (32 bytes hex = 64 chars)
 }
 
-interface StoredMeasurement extends ArduinoPayload {
-  verified: boolean;   // Signature verification result
-  timestamp: number;   // Unix timestamp
+// Legacy model (ECDSA - for reference/Ethereum)
+interface ArduinoPayload {
+  sensor_id: string;
+  hash: string;          // SHA-256 hash of the message
+  signature: string;     // ECDSA signature (hex)
+  publicKey: string;     // secp256k1 public key (hex)
 }
 ```
 
@@ -117,9 +150,10 @@ interface StoredMeasurement extends ArduinoPayload {
 
 ### Implemented
 - **Express 5** - API server
-- **elliptic** - ECDSA secp256k1 signature verification
+- **Ed25519 (tweetnacl)** - Ed25519 signature generation and verification (MAIN)
+- **elliptic** - ECDSA secp256k1 signature verification (legacy/Ethereum)
 - **Next.js 15** - Frontend dashboard
-- **MeshJS** - Cardano transaction building (in development)
+- **MeshJS** - Cardano transaction building
 - **Aiken** - Smart contract language for Cardano
 
 ### Planned (Not Yet Integrated)
@@ -130,7 +164,15 @@ interface StoredMeasurement extends ArduinoPayload {
 
 ### Overview
 
-The sensor oracle system validates ESP32 sensor data on-chain using ECDSA secp256k1 signatures. Each sensor has a unique NFT that identifies its oracle UTXO.
+The sensor oracle system validates ESP32 sensor data on-chain using **Ed25519 signatures over SHA-256 hashes**. Each sensor has a unique NFT that identifies its oracle UTXO.
+
+**Signature Flow:**
+1. Construct message with fields in alphabetical order: `humidity || sensor_id || temperature || timestamp`
+2. Calculate SHA-256 hash of the message
+3. Sign the HASH with Ed25519 (not the message directly)
+4. On-chain validator reconstructs message, calculates hash, and verifies signature
+
+See `docs/SIGNATURE_FLOW.md` for complete details.
 
 ### Oracle Workflow
 
@@ -140,7 +182,7 @@ The sensor oracle system validates ESP32 sensor data on-chain using ECDSA secp25
 
 ### On-Chain Validation
 
-The `sensor_oracle_verified` validator checks:
+The `sensor_oracle_ed25519` validator checks:
 
 - Transaction signed by authorized operator
 - NFT present in both input and output
@@ -148,11 +190,11 @@ The `sensor_oracle_verified` validator checks:
   - Temperature: -50°C to 100°C
   - Humidity: 0% to 100%
   - Timestamp > 0
-- Signature and public key lengths (64 bytes each)
-- **ECDSA secp256k1 signature verification**:
+- Signature and public key lengths (64 bytes signature, 32 bytes public key)
+- **Ed25519 signature verification**:
   - Message: `humidity || sensor_id || temperature || timestamp` (alphabetical order)
-  - Hash: `SHA-256(message)`
-  - Verification: `verify_ecdsa_secp256k1_signature(public_key, hash, signature)`
+  - Hash: `SHA-256(message)` (CRITICAL: signs the hash, not the message)
+  - Verification: `verify_ed25519_signature(public_key, message_hash, signature)`
 
 ### Datum Structure
 
@@ -162,11 +204,19 @@ interface SensorData {
   temperature: number;    // 235 = 23.5°C (value * 10)
   humidity: number;       // 652 = 65.2% (value * 10)
   timestamp: number;      // Unix timestamp (milliseconds)
-  signature: string;      // ECDSA signature (64 bytes hex)
-  public_key: string;     // secp256k1 public key (64 bytes hex)
+  signature: string;      // Ed25519 signature (64 bytes hex = 128 chars)
+  public_key: string;     // Ed25519 public key (32 bytes hex = 64 chars)
 }
 ```
 
+**IMPORTANT:** The system signs the SHA-256 hash of the message, not the message directly.
+This avoids issues with null bytes in messages and follows the standard for signing long messages.
+
 ### Documentation
 
-See `docs/oracle-usage.md` for complete usage guide with examples.
+- `docs/oracle-usage.md` - Complete oracle usage guide
+- `docs/SIGNATURE_FLOW.md` - Ed25519 signature flow explanation
+- `docs/ed25519-migration-guide.md` - Migration guide from ECDSA to Ed25519
+- `docs/TROUBLESHOOTING_FAILED_TX.md` - Fix failed transactions in frontend
+- `docs/MESHJS_PLUTUS_V3_ISSUE.md` - **CRITICAL:** MeshJS beta bug preventing oracle updates (detailed analysis)
+- `docs/PLUTUS_DATA_TYPES_ALTERNATIVES.md` - Analysis of alternative Plutus data types for optimization

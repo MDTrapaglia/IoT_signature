@@ -1,0 +1,370 @@
+================================================================================
+BUG REPORT: MeshJS v1.9.0-beta.90 - Cannot convert undefined to a BigInt
+================================================================================
+
+Date: 2026-01-09
+Reporter: ESP32 IoT Certification System Project
+Version: @meshsdk/core v1.9.0-beta.90
+Network: Cardano Preprod Testnet
+
+================================================================================
+SUMMARY
+================================================================================
+
+MeshJS v1.9.0-beta.90 fails when building transactions that SPEND from Plutus V3
+script addresses. The error occurs during the .complete() phase with:
+
+  "Error: Evaluate redeemers failed: Error serializing outputs:
+   Cannot convert undefined to a BigInt"
+
+This bug ONLY affects spending operations - creating outputs to Plutus V3
+scripts works correctly.
+
+================================================================================
+ERROR DETAILS
+================================================================================
+
+Full Error Stack Trace:
+-----------------------
+Error: Evaluate redeemers failed: Error serializing outputs: Cannot convert undefined to a BigInt
+    at Object.computeMinimumCost (node_modules/@meshsdk/transaction/dist/index.js:4107:19)
+    at async computeMinimumCost (node_modules/@meshsdk/transaction/dist/index.js:1387:19)
+    at async computeChangeAndAdjustForFee (node_modules/@cardano-sdk/input-selection/src/RoundRobinRandomImprove/change.ts:447:26)
+    at async _MeshTxBuilder.selectUtxos (node_modules/@meshsdk/transaction/dist/index.js:4144:12)
+    at async _MeshTxBuilder.complete (node_modules/@meshsdk/transaction/dist/index.js:4069:25)
+
+Error Location:
+--------------
+The error occurs during the transaction building phase when calling .complete()
+on a MeshTxBuilder that includes:
+- .spendingPlutusScriptV3()
+- Input from a Plutus V3 script address
+- Script code attachment
+- Redeemer
+- Collateral
+
+Error Phase:
+-----------
+The error happens specifically during:
+1. computeMinimumCost() - trying to calculate execution units
+2. Evaluate redeemers - evaluating the Plutus script
+3. Serializing outputs - converting transaction to CBOR
+
+Root Cause:
+----------
+During the CBOR serialization process, an internal field is undefined and
+MeshJS attempts to convert it to BigInt, which is illegal in JavaScript:
+  BigInt(undefined) -> TypeError
+
+================================================================================
+REPRODUCTION
+================================================================================
+
+Environment:
+-----------
+- Node.js: v23.x
+- TypeScript: 5.9.3
+- @meshsdk/core: 1.9.0-beta.90
+- Network: Cardano Preprod Testnet
+- Script Type: Plutus V3
+- Operation: Spending from oracle script address
+
+Minimal Reproduction Code:
+-------------------------
+```typescript
+import {
+    BlockfrostProvider,
+    MeshTxBuilder,
+    MeshWallet
+} from "@meshsdk/core";
+
+const blockchainProvider = new BlockfrostProvider(BLOCKFROST_API_KEY);
+const txBuilder = new MeshTxBuilder({
+    fetcher: blockchainProvider,
+    verbose: true
+});
+
+// This works fine - creating output to Plutus V3 script
+const createTx = await txBuilder
+    .txOut(scriptAddress, assets)
+    .txOutInlineDatumValue(datum)
+    .complete(); // ✅ SUCCESS
+
+// This fails - spending from Plutus V3 script
+const spendTx = await txBuilder
+    .spendingPlutusScriptV3()
+    .txIn(utxo.input.txHash, utxo.input.outputIndex, utxo.output.amount, scriptAddress)
+    .txInScript(scriptCode)
+    .txInInlineDatumPresent()
+    .txInRedeemerValue(redeemer)
+    .txOut(scriptAddress, assets)
+    .txOutInlineDatumValue(newDatum)
+    .txInCollateral(collateral.txHash, collateral.outputIndex, collateral.amount, collateral.address)
+    .requiredSignerHash(operatorPubKeyHash)
+    .changeAddress(walletAddress)
+    .selectUtxosFrom(utxos)
+    .complete(); // ❌ FAILS with BigInt error
+```
+
+Oracle UTXO (verified to exist):
+-------------------------------
+- Address: addr_test1wz40a7a86rdmk9kcknz5dvq867wp6xt2ws6p32ke3frrqsq9xwxnm
+- UTXO: c79f01469c32168d3b9fa1bc0e1059f2b26dc62132bb29deed14709318ad2b55#0
+- Contains NFT: a2f69dc8b380bbcf6b79d3e3b26097423c981df0bce0bd44d1e75de9.SENSOR_ESP32_TEST_001_V2
+- Datum: Inline (36c9c2dd11c6700ee2056371714f2de5a779d1998ace6aafbbae0ec630c62dd4)
+
+Datum Structure (verified correct):
+----------------------------------
+Constructor 0 with fields:
+  - sensor_id: ByteArray (UTF-8 string "ESP32_001")
+  - temperature: Integer (235 = 23.5°C * 10)
+  - humidity: Integer (652 = 65.2% * 10)
+  - timestamp: Integer (Unix timestamp in milliseconds)
+  - signature: ByteArray (64 bytes Ed25519 signature)
+  - public_key: ByteArray (32 bytes Ed25519 public key)
+
+All fields are properly defined (no undefined values).
+
+Redeemer Structure:
+------------------
+Constructor 0 (Update action) with no fields: mConStr0([])
+
+Script:
+------
+- Type: Plutus V3
+- Compiled with: Aiken 1.1.7
+- Validator: sensor_oracle_ed25519
+- Parameters: Applied correctly (NFT policy + operator pubkeyhash)
+
+================================================================================
+VERIFICATION THAT DATUM IS NOT THE PROBLEM
+================================================================================
+
+Evidence:
+--------
+1. The EXACT SAME datum structure works in create_oracle.ts
+2. All datum field values are verified to be defined (added debug logging)
+3. Data types are correct:
+   - sensor_id: string
+   - temperature: number (235)
+   - humidity: number (652)
+   - timestamp: number (1767925389639)
+   - signature: string (128 hex chars)
+   - public_key: string (64 hex chars)
+
+4. Transaction JSON shows data serializes correctly before the error
+
+Debug Output:
+------------
+🔍 DEBUG - Sensor Data values:
+  sensor_id: ESP32_001 string
+  temperature: 235 number
+  humidity: 652 number
+  timestamp: 1767925389639 number
+  signature: 3a13cc8bb76ee0284726... string length: 128
+  public_key: cb401617ff81e487f081... string length: 64
+
+All values are properly defined with correct types.
+
+================================================================================
+TESTED SOLUTIONS (ALL FAILED)
+================================================================================
+
+1. ❌ Added data validation (skip NULL measurements)
+2. ❌ Used explicit Number() conversions for all integers
+3. ❌ Removed evaluator/submitter from MeshTxBuilder
+4. ❌ Added evaluator explicitly
+5. ❌ Added validity range (invalidBefore/invalidAfter)
+6. ❌ Filtered collateral from available UTXOs
+7. ❌ Tested with Delete redeemer (consume without creating outputs)
+   - Result: Failed with "Error serializing INPUTS" instead of outputs
+8. ❌ Tested different MeshJS versions:
+   - v1.8.4 (stable): Different error (toPlutusData undefined)
+   - v1.7.33 (stable): Same toPlutusData error
+   - Conclusion: Older versions don't support Plutus V3 spending properly
+
+================================================================================
+COMPARISON: WHAT WORKS vs WHAT FAILS
+================================================================================
+
+✅ WORKS - create_oracle.ts (creating Plutus V3 outputs):
+```typescript
+const tx = await txBuilder
+    .txOut(oracleScriptAddr, assets)
+    .txOutInlineDatumValue(datum)  // Same datum structure
+    .changeAddress(walletAddr)
+    .selectUtxosFrom(utxos)
+    .complete();  // ✅ SUCCESS
+```
+
+Result: Transaction submitted successfully
+TX Hash: c79f01469c32168d3b9fa1bc0e1059f2b26dc62132bb29deed14709318ad2b55
+
+❌ FAILS - update_oracle.ts (spending Plutus V3 inputs):
+```typescript
+const tx = await txBuilder
+    .spendingPlutusScriptV3()
+    .txIn(...)
+    .txInScript(oracleScript.code)
+    .txInInlineDatumPresent()
+    .txInRedeemerValue(redeemer)
+    .txOut(oracleScriptAddr, assets)
+    .txOutInlineDatumValue(newDatum)  // Same datum structure
+    .txInCollateral(...)
+    .requiredSignerHash(operatorPubKeyHash)
+    .changeAddress(walletAddr)
+    .selectUtxosFrom(utxos)
+    .complete();  // ❌ FAILS
+```
+
+Result: "Cannot convert undefined to a BigInt"
+
+Key Difference:
+--------------
+The ONLY difference is the use of .spendingPlutusScriptV3() to consume an
+existing script UTXO. The datum structure is identical.
+
+================================================================================
+ANALYSIS
+================================================================================
+
+Bug Location:
+------------
+The bug is in MeshJS's internal transaction building code, specifically in:
+- @meshsdk/transaction/dist/index.js:4107 (computeMinimumCost)
+- @cardano-sdk/input-selection (computeChangeAndAdjustForFee)
+
+The error occurs when MeshJS tries to:
+1. Evaluate the Plutus script redeemer
+2. Calculate execution units (memory + CPU steps)
+3. Serialize the transaction to CBOR
+4. An internal field is undefined
+5. Code tries: BigInt(undefined) -> Error
+
+Why Create Works but Spend Fails:
+---------------------------------
+- CREATE: Only writes to blockchain, doesn't evaluate scripts
+- SPEND: Must execute the Plutus validator, which triggers the buggy code path
+
+This is a bug in MeshJS's Plutus V3 evaluation/serialization code, NOT in
+user data or configuration.
+
+================================================================================
+IMPACT
+================================================================================
+
+Severity: HIGH
+-------------
+- Blocks ALL spending operations from Plutus V3 script addresses
+- Oracle update functionality completely broken
+- No workaround available within MeshJS
+
+What Still Works:
+----------------
+✅ Creating new Plutus V3 oracles (txOut)
+✅ Minting with Plutus V3 (.mintPlutusScriptV3)
+✅ Regular wallet-to-wallet transactions
+✅ Backend receiving and storing measurements
+✅ Database operations
+✅ Frontend dashboard
+
+What Doesn't Work:
+-----------------
+❌ Updating existing Plutus V3 oracles (spending)
+❌ Consuming any Plutus V3 script UTXOs
+❌ Any transaction with .spendingPlutusScriptV3()
+
+================================================================================
+WORKAROUNDS CONSIDERED
+================================================================================
+
+1. Manual Updates:
+   - Status: Possible but impractical
+   - Requires manual intervention for each oracle update
+
+2. Wait for MeshJS Stable Release:
+   - Status: Unknown timeline
+   - v1.9.0 is still in beta (beta.93 as of Jan 2026)
+
+3. Migrate to Lucid Evolution:
+   - Status: Recommended
+   - Lucid has better Plutus V3 support
+   - Requires rewriting transaction code
+
+4. Use MeshJS for create, Lucid for update:
+   - Status: Possible hybrid approach
+   - Keeps MeshJS in frontend
+   - Uses Lucid for backend spending operations
+
+================================================================================
+RELATED ISSUES
+================================================================================
+
+GitHub Issues Found:
+------------------
+1. Issue #763: PlutusV3 Script Hash Mismatch (CRITICAL)
+   - Different hash calculation bug
+   - Also causes fund locks
+   - Related to CBOR encoding issues
+
+2. Issues #712, #713: BigInt Type Mixing
+   - Different error: "Cannot mix BigInt and other types"
+   - Occurs during arithmetic operations
+   - Has workaround (explicit BigInt conversions)
+   - NOT the same as this bug
+
+================================================================================
+EXPECTED BEHAVIOR
+================================================================================
+
+The transaction should:
+1. Successfully evaluate the Plutus V3 redeemer
+2. Calculate execution units correctly
+3. Serialize all fields (including undefined checks)
+4. Build and sign the transaction
+5. Submit to the blockchain
+
+Similar to how create_oracle.ts works, but with spending capability.
+
+================================================================================
+REQUEST
+================================================================================
+
+Please investigate and fix the undefined-to-BigInt conversion in:
+- @meshsdk/transaction computeMinimumCost function
+- Transaction serialization for Plutus V3 spending operations
+- Add proper undefined checks before BigInt conversions
+
+This bug blocks production use of Plutus V3 spending validators with MeshJS.
+
+================================================================================
+ADDITIONAL INFORMATION
+================================================================================
+
+Project Context:
+---------------
+ESP32 IoT sensor data certification system using Ed25519 signatures verified
+on-chain. Oracles store signed sensor measurements. System needs to update
+oracles periodically with new readings.
+
+Full Documentation:
+------------------
+Complete analysis available at:
+- docs/MESHJS_PLUTUS_V3_ISSUE.md (detailed investigation)
+- docs/PLUTUS_DATA_TYPES_ALTERNATIVES.md (datum analysis)
+- docs/PROJECT_STATUS.md (system status)
+
+Test Files:
+----------
+- offchain/transactions/update_oracle.ts (main failing code)
+- offchain/transactions/create_oracle.ts (working comparison)
+- offchain/transactions/test_update_manual.ts (minimal reproduction)
+
+Contact:
+-------
+Project available at: github.com/[your-repo] (if applicable)
+Can provide additional logs, transaction dumps, or test cases if needed.
+
+================================================================================
+END OF REPORT
+================================================================================

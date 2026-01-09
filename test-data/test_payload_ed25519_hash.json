@@ -1,0 +1,9 @@
+{
+  "sensor_id": "ESP32_TEST_001",
+  "temperature": 235,
+  "humidity": 652,
+  "timestamp": 1767834733615,
+  "hash": "5dd32940cc2cb9f6934e6b06d1a0be027c3a7559a3050df8f9cd02ecac66bf98",
+  "signature": "507f7accc0a26503d2281dd63276541e77fd7f4f81db3716a4cb0c544b1948100c4abb64105aa6b32e37456d058b138b0f98ec14968c3429929c49da6626a401",
+  "publicKey": "ccad2ed5ab9571799182ef3cb60079eea7269f79f1563f17300ce742b6584115"
+}

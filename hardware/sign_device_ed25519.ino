@@ -16,6 +16,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "Ed25519.h"  // Ed25519 by Oryx Embedded
+#include "Sha256.h"   // SHA-256 by Oryx Embedded (mismo paquete)
 
 // ============================================================================
 // Configuración WiFi
@@ -142,22 +143,36 @@ int64_t getCurrentTimestamp() {
 
 /**
  * Firma los datos del sensor con Ed25519
+ * IMPORTANTE: Firma el HASH SHA-256 del mensaje, no el mensaje directamente
+ * Esto es compatible con el smart contract sensor_oracle_ed25519.ak
  */
 bool signSensorData(int temperature, int humidity, int64_t timestamp,
-                    uint8_t* signature) {
+                    uint8_t* signature, uint8_t* messageHash) {
     // Construir mensaje
     uint8_t message[256];  // Buffer suficiente para el mensaje
     size_t messageLen = buildMessage(temperature, humidity, timestamp,
                                      sensorId, message);
 
-    // Firmar con Ed25519
+    // Calcular SHA-256 del mensaje
+    // CRÍTICO: El smart contract espera que firmemos el hash, no el mensaje
+    Sha256Context sha256Context;
+    error_t error = sha256Init(&sha256Context);
+    if (error != NO_ERROR) {
+        Serial.println("❌ Error al inicializar SHA-256");
+        return false;
+    }
+
+    sha256Update(&sha256Context, message, messageLen);
+    sha256Final(&sha256Context, messageHash);
+
+    // Firmar el HASH SHA-256 con Ed25519
     Ed25519Context context;
-    error_t error = ed25519GenerateSignature(&context, privateKey, publicKey,
-                                             message, messageLen, NULL, 0,
-                                             0, signature);
+    error = ed25519GenerateSignature(&context, privateKey, publicKey,
+                                     messageHash, 32, NULL, 0,
+                                     0, signature);
 
     if (error != NO_ERROR) {
-        Serial.println("❌ Error al firmar datos");
+        Serial.println("❌ Error al firmar hash");
         return false;
     }
 
@@ -168,7 +183,8 @@ bool signSensorData(int temperature, int humidity, int64_t timestamp,
  * Envía los datos firmados al servidor
  */
 bool sendDataToServer(int temperature, int humidity, int64_t timestamp,
-                      const String& signatureHex, const String& publicKeyHex) {
+                      const String& hashHex, const String& signatureHex,
+                      const String& publicKeyHex) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("❌ WiFi no conectado");
         return false;
@@ -184,6 +200,7 @@ bool sendDataToServer(int temperature, int humidity, int64_t timestamp,
     payload += "\"temperature\":" + String(temperature) + ",";
     payload += "\"humidity\":" + String(humidity) + ",";
     payload += "\"timestamp\":" + String((long long)timestamp) + ",";
+    payload += "\"hash\":\"" + hashHex + "\",";
     payload += "\"signature\":\"" + signatureHex + "\",";
     payload += "\"publicKey\":\"" + publicKeyHex + "\"";
     payload += "}";
@@ -282,22 +299,25 @@ void loop() {
         // 3. Firmar datos
         Serial.println("\n🔏 Firmando datos con Ed25519...");
         uint8_t signature[64];  // Ed25519 produce firmas de 64 bytes
+        uint8_t messageHash[32]; // SHA-256 produce 32 bytes
 
-        if (!signSensorData(temperature, humidity, timestamp, signature)) {
+        if (!signSensorData(temperature, humidity, timestamp, signature, messageHash)) {
             Serial.println("❌ Error en la firma");
             return;
         }
 
+        String hashHex = bytesToHex(messageHash, 32);
         String signatureHex = bytesToHex(signature, 64);
         String publicKeyHex = bytesToHex(publicKey, 32);
 
         Serial.println("✅ Firma generada");
+        Serial.println("Hash: " + hashHex.substring(0, 32) + "...");
         Serial.println("Signature: " + signatureHex.substring(0, 32) + "...");
         Serial.println("Public Key: " + publicKeyHex.substring(0, 32) + "...");
 
         // 4. Enviar al servidor
         if (sendDataToServer(temperature, humidity, timestamp,
-                            signatureHex, publicKeyHex)) {
+                            hashHex, signatureHex, publicKeyHex)) {
             Serial.println("\n✅ Datos enviados exitosamente");
         } else {
             Serial.println("\n❌ Error al enviar datos");

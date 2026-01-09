@@ -119,6 +119,21 @@ class OracleSubmissionService {
         }
       });
 
+      // Validate that measurement has all required fields
+      if (!measurement.temperature || !measurement.humidity || !measurement.timestamp) {
+        console.log(`⏭️  Skipping measurement ${measurement.id}: missing required fields (temperature, humidity, or timestamp)`);
+
+        // Update transaction with validation error
+        await prisma.oracleTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: OracleTransactionStatus.FAILED,
+            status_message: 'Measurement missing required fields (temperature, humidity, or timestamp)'
+          }
+        });
+        return;
+      }
+
       // Link measurement to transaction immediately
       await measurementService.linkToTransaction(measurement.id, transaction.id);
 

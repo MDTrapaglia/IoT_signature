@@ -92,10 +92,17 @@ pub type SensorData {
 }
 
 fn verify_signature(data: SensorData) -> Bool {
-  let message = build_message(data)  // Firma el MENSAJE directamente ✅
+  // 1. Construir mensaje con campos ordenados alfabéticamente
+  let message = build_message(data)
+
+  // 2. Calcular HASH SHA-256 del mensaje
+  // IMPORTANTE: Firma el HASH, no el mensaje directamente
+  let message_hash = builtin.sha2_256(message)
+
+  // 3. Verificar firma Ed25519 sobre el HASH
   verify_ed25519_signature(
     data.public_key,
-    message,
+    message_hash,  // ✅ Verifica sobre el HASH
     data.signature,
   )
 }
@@ -103,7 +110,9 @@ fn verify_signature(data: SensorData) -> Bool {
 
 **Diferencias clave:**
 1. Tamaño de `public_key`: 64 → 32 bytes
-2. Ed25519 firma el **mensaje directamente**, no su hash SHA-256
+2. **Se firma el HASH SHA-256 del mensaje** (no el mensaje directamente)
+   - Esto evita problemas con mensajes que contienen bytes nulos
+   - Compatible con el estándar de firmado de mensajes largos
 3. Función `verify_ed25519_signature` built-in de Aiken
 
 ### 2. Scripts TypeScript
@@ -143,6 +152,7 @@ function buildMessage(data: SensorData): Buffer {
 
 ```typescript
 import nacl from 'tweetnacl';
+import crypto from 'crypto';
 
 function generateSignedSensorData(
     sensor_id: string,
@@ -153,11 +163,15 @@ function generateSignedSensorData(
     // Construir mensaje
     const message = buildMessage({...});
 
+    // IMPORTANTE: Calcular HASH SHA-256 del mensaje
+    // Se firma el HASH, no el mensaje directamente
+    const messageHash = crypto.createHash('sha256').update(message).digest();
+
     // Generar par de claves Ed25519
     const keyPair = nacl.sign.keyPair();
 
-    // Firmar
-    const signature = nacl.sign.detached(message, keyPair.secretKey);
+    // Firmar el HASH (no el mensaje completo)
+    const signature = nacl.sign.detached(messageHash, keyPair.secretKey);
 
     return {
         sensor_id,
@@ -180,6 +194,7 @@ function generateSignedSensorData(
 
 ```cpp
 #include "Ed25519.h"
+#include "Sha256.h"
 
 uint8_t privateKey[32];  // 32 bytes
 uint8_t publicKey[32];   // 32 bytes (vs 64 ECDSA) ✅
@@ -188,13 +203,21 @@ uint8_t publicKey[32];   // 32 bytes (vs 64 ECDSA) ✅
 Ed25519Context context;
 ed25519GeneratePublicKey(&context, privateKey, publicKey);
 
-// Firmar datos
+// Construir mensaje
 uint8_t message[256];
 size_t messageLen = buildMessage(...);  // Mismo formato que TypeScript
 
+// IMPORTANTE: Calcular HASH SHA-256 del mensaje
+Sha256Context sha256Context;
+uint8_t messageHash[32];
+sha256Init(&sha256Context);
+sha256Update(&sha256Context, message, messageLen);
+sha256Final(&sha256Context, messageHash);
+
+// Firmar el HASH (no el mensaje completo)
 uint8_t signature[64];
 ed25519GenerateSignature(&context, privateKey, publicKey,
-                         message, messageLen, NULL, 0, 0, signature);
+                         messageHash, 32, NULL, 0, 0, signature);
 ```
 
 ---
@@ -273,9 +296,13 @@ Mensaje (30 bytes):
 00 00 00 00 00 00 02 8C  45 53 50 33 32 5F 30 30
 31 00 00 00 00 00 00 00  EB 00 00 01 9B 9A 6E A9
 7C
+
+Hash SHA-256 del mensaje (32 bytes):
+[Se calcula SHA-256(mensaje) y este hash es lo que se firma]
 ```
 
-Este mensaje es lo que se firma con Ed25519.
+**IMPORTANTE:** El sistema firma el **HASH SHA-256 del mensaje**, no el mensaje directamente.
+Esto evita problemas con mensajes largos o que contengan bytes nulos.
 
 ---
 
