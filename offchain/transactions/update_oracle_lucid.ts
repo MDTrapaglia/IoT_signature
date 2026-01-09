@@ -229,12 +229,13 @@ async function main() {
 
     const oracleScript = applyParamsToScript(oracleValidator.compiledCode, [paramsData]);
 
-    // IMPORTANTE: MeshJS y Lucid calculan direcciones diferentes para el mismo script
-    // Usar la dirección registrada en la DB (creada con MeshJS)
-    // TODO: Investigar por qué las direcciones son diferentes
-    const oracleScriptAddr = "addr_test1wrlpxpuc0mzuh30frm8uharg200p8rrntwtnhkst7c7536c4ktu72";
+    // Calculate script address (same as create_oracle_lucid.ts)
+    const oracleScriptAddr = (lucid as any).utils.validatorToAddress({
+        type: "PlutusV3",
+        script: oracleScript
+    });
 
-    console.log(`\n🔍 Oracle Address (from DB): ${oracleScriptAddr}`);
+    console.log(`\n🔍 Oracle Address: ${oracleScriptAddr}`);
 
     // Perform updates
     const txHashes: string[] = [];

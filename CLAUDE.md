@@ -10,15 +10,15 @@ ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor meas
 
 ## ⚠️ Known Issues & Solutions
 
-### MeshJS Beta - Plutus V3 Spending Bug (RESUELTO con Lucid Evolution)
+### MeshJS Beta - Plutus V3 Bug (RESUELTO - Migración Completa a Lucid Evolution)
 
-**Status:** ✅ RESUELTO - Migrado a Lucid Evolution para oracle updates
+**Status:** ✅ RESUELTO - Migración completa a Lucid Evolution
 **Original Error:** `Cannot convert undefined to a BigInt` during transaction building with MeshJS
 **Impact:** Oracle updates fallaban completamente
 
-**Solution:** Arquitectura híbrida MeshJS + Lucid Evolution
-- MeshJS: create, mint, delete (funcionan correctamente)
-- **Lucid Evolution: update** (soluciona el bug)
+**Solution:** Migración completa a Lucid Evolution v0.4.29
+- ✅ **Lucid Evolution:** ALL oracle operations (mint, create, update, delete)
+- ⚠️ **MeshJS (deprecated):** Scripts con sufijo `:meshjs` mantenidos para compatibilidad
 
 **Full documentation:**
 - Migration plan: `docs/MIGRATION_PLAN_LUCID_EVOLUTION.md`
@@ -29,13 +29,14 @@ ESP32 IoT Data Certification System for Cardano blockchain. Captures sensor meas
 - ✅ Backend receiving and validating measurements
 - ✅ Database storing signed data
 - ✅ Frontend dashboard showing metrics
-- ✅ Oracle creation (initial deployment - MeshJS)
+- ✅ **Oracle mint NFT (Lucid Evolution)** ⭐ NEW
+- ✅ **Oracle creation (Lucid Evolution)** ⭐ NEW
 - ✅ **Oracle updates (Lucid Evolution)** ⭐ NEW
+- ✅ **Oracle deletion (Lucid Evolution)** ⭐ NEW
 
 **Known Limitations:**
-- ⚠️ MeshJS and Lucid Evolution calculate **different script addresses** for the same code
-- ⚠️ Current workaround: Hardcoded script address in update_oracle_lucid.ts
-- ⚠️ Requires investigation why addresses differ
+- ⚠️ MeshJS scripts deprecated but available with `:meshjs` suffix for reference
+- ⚠️ Do NOT mix MeshJS and Lucid Evolution scripts (they calculate different addresses)
 
 ## Commands
 
@@ -46,12 +47,17 @@ npm run dev                 # Start dev server with tsx watch (port 3001)
 npm run demo                # Run transaction demo
 npm run nft                 # Run NFT minting
 
-# Oracle Scripts (Cardano transactions with Ed25519)
-npm run oracle:mint-nft -- <sensor_id>           # Mint NFT for sensor
-npm run oracle:create -- <policy_id> <asset_name> # Create oracle with NFT (Ed25519 - MeshJS)
-npm run oracle:update -- <policy_id> <asset_name> [num_updates] # BROKEN: MeshJS Plutus V3 bug
-npm run oracle:update:lucid -- <policy_id> <asset_name> [num_updates] # Update oracle (Lucid Evolution)
-npm run oracle:delete -- <policy_id> <asset_name> # Delete oracle
+# Oracle Scripts (Cardano transactions with Ed25519 - Lucid Evolution)
+npm run oracle:mint-nft -- <sensor_id>                              # Mint NFT for sensor
+npm run oracle:create -- <policy_id> <asset_name>                   # Create oracle with NFT
+npm run oracle:update -- <policy_id> <asset_name> [num_updates]    # Update oracle with sensor data
+npm run oracle:delete -- <policy_id> <asset_name>                   # Delete oracle and recover funds
+
+# Oracle Scripts (MeshJS - DEPRECATED, use for reference only)
+npm run oracle:mint-nft:meshjs -- <sensor_id>                       # DEPRECATED: Use oracle:mint-nft
+npm run oracle:create:meshjs -- <policy_id> <asset_name>            # DEPRECATED: Use oracle:create
+npm run oracle:update:meshjs -- <policy_id> <asset_name>            # BROKEN: Plutus V3 bug
+npm run oracle:delete:meshjs -- <policy_id> <asset_name>            # DEPRECATED: Use oracle:delete
 
 # Ed25519 Testing
 npm run test:ed25519:create    # Create UTXO with Ed25519 signature
@@ -119,14 +125,17 @@ Frontend ← GET /api/measurements ←───────┘
 - `hardware/README_ED25519.md` - Ed25519 setup and installation guide
 - `offchain/frontend/` - Next.js dashboard application
 - `offchain/transactions/` - Cardano transaction code
-  - **MeshJS scripts:**
-    - `mint_sensor_nft.ts` - Mint unique NFT for sensor oracle
-    - `create_oracle.ts` - Initialize oracle with NFT and Ed25519 signed data
-    - `delete_oracle.ts` - Delete oracle and recover ADA
-    - `update_oracle.ts` - ⚠️ DEPRECATED (MeshJS bug) - Use `update_oracle_lucid.ts`
-  - **Lucid Evolution scripts:**
-    - `update_oracle_lucid.ts` - ⭐ Update oracle with Lucid Evolution (ACTIVE)
+  - **Lucid Evolution scripts (ACTIVE):**
+    - `mint_sensor_nft_lucid.ts` - ⭐ Mint unique NFT for sensor oracle
+    - `create_oracle_lucid.ts` - ⭐ Initialize oracle with NFT and Ed25519 signed data
+    - `update_oracle_lucid.ts` - ⭐ Update oracle with new sensor data
+    - `delete_oracle_lucid.ts` - ⭐ Delete oracle and recover ADA
     - `types_lucid.ts` - Schemas and types for Lucid Evolution
+  - **MeshJS scripts (DEPRECATED):**
+    - `mint_sensor_nft.ts` - ⚠️ DEPRECATED - Use `mint_sensor_nft_lucid.ts`
+    - `create_oracle.ts` - ⚠️ DEPRECATED - Use `create_oracle_lucid.ts`
+    - `update_oracle.ts` - ⚠️ BROKEN (Plutus V3 bug) - Use `update_oracle_lucid.ts`
+    - `delete_oracle.ts` - ⚠️ DEPRECATED - Use `delete_oracle_lucid.ts`
   - **Common/Testing:**
     - `types.ts` - TypeScript types for SensorData and OracleParams (Ed25519)
     - `test_ed25519_create.ts` - Test Ed25519 UTXO creation
@@ -168,7 +177,8 @@ interface ArduinoPayload {
 - **Ed25519 (tweetnacl)** - Ed25519 signature generation and verification (MAIN)
 - **elliptic** - ECDSA secp256k1 signature verification (legacy/Ethereum)
 - **Next.js 15** - Frontend dashboard
-- **MeshJS** - Cardano transaction building
+- **Lucid Evolution 0.4.29** - Cardano transaction building (MAIN)
+- **MeshJS 1.9.0-beta.90** - Deprecated (Plutus V3 bug, kept for reference)
 - **Aiken** - Smart contract language for Cardano
 
 ### Planned (Not Yet Integrated)
