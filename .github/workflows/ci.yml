@@ -117,6 +117,7 @@ jobs:
           name: frontend-build
           path: offchain/frontend/.next
           retention-days: 7
+          include-hidden-files: true
         if: steps.build-frontend.outcome == 'success'
 
   # Integration Tests
