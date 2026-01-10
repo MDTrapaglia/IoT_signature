@@ -97,7 +97,7 @@ class TransactionMonitorService {
       }
 
       // Query transaction info from Blockfrost API directly
-      const response = await fetch(`https://cardano-preprod.blockfrost.io/api/v0/txs/${tx_hash}`, {
+      const response = await globalThis.fetch(`https://cardano-preprod.blockfrost.io/api/v0/txs/${tx_hash}`, {
         headers: {
           'project_id': process.env.BLOCKFROST_API_KEY
         }
@@ -127,7 +127,7 @@ class TransactionMonitorService {
         // Transaction confirmed!
         console.log(`✅ Transaction ${tx_hash} confirmed in block ${txInfo.block_height || 'unknown'}`);
 
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
           status: OracleTransactionStatus.CONFIRMED,
           confirmed_at: new Date(),
           last_checked_at: new Date(),
@@ -163,16 +163,17 @@ class TransactionMonitorService {
         });
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`❌ Error checking transaction ${tx_hash}:`, error);
 
       // Don't mark as FAILED immediately - might be temporary API issue
       // Just log and continue polling
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await prisma.oracleTransaction.update({
         where: { id: transaction_id },
         data: {
           last_checked_at: new Date(),
-          status_message: `Error checking tx: ${error.message}`
+          status_message: `Error checking tx: ${errorMessage}`
         }
       });
     }

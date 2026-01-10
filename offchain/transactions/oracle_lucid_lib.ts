@@ -84,8 +84,8 @@ const SensorDataSchema = Data.Object({
     public_key: Data.Bytes()
 });
 
-type SensorDataPlutus = Data.Static<typeof SensorDataSchema>;
-const SensorDataPlutus = SensorDataSchema as unknown as SensorDataPlutus;
+type SensorDataPlutusType = Data.Static<typeof SensorDataSchema>;
+const SensorDataPlutus = SensorDataSchema as unknown as SensorDataPlutusType;
 
 const OracleRedeemer = {
     Update: () => Data.to(new Constr(0, [])),
