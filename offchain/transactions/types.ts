@@ -45,8 +45,8 @@ export interface OracleParams {
  * Corresponde al tipo OracleRedeemer en Aiken
  */
 export enum OracleRedeemer {
-    Update = 0,  // Actualizar datos del sensor
-    Delete = 1   // Eliminar el oracle
+    _Update = 0,  // Actualizar datos del sensor (prefixed with _ as currently unused)
+    _Delete = 1   // Eliminar el oracle (prefixed with _ as currently unused)
 }
 
 /**

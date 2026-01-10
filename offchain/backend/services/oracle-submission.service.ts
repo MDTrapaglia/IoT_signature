@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { measurementService } from './measurement.service.js';
 import { sensorService } from './sensor.service.js';
-import { OracleTransactionStatus, OracleTransactionType } from '@prisma/client';
+import { OracleTransactionStatus, OracleTransactionType, type Measurement } from '@prisma/client';
 import { updateOracle, type OracleUpdateParams, type SensorData } from '../../transactions/oracle_lucid_lib.js';
 
 class OracleSubmissionService {
@@ -89,7 +89,7 @@ class OracleSubmissionService {
    * Submit a single measurement to the oracle
    * Private method called by processUnsubmittedMeasurements
    */
-  private async submitMeasurement(measurement: any): Promise<void> {
+  private async submitMeasurement(measurement: Measurement): Promise<void> {
     try {
       console.log(`🔄 Submitting measurement ${measurement.id} for sensor ${measurement.sensor_id}`);
 
@@ -175,15 +175,20 @@ class OracleSubmissionService {
           }
         });
 
-      } catch (oracleError: any) {
+      } catch (oracleError: unknown) {
         console.error(`❌ Oracle update failed:`, oracleError);
+
+        // Extract error message
+        const errorMessage = oracleError instanceof Error
+          ? oracleError.message
+          : String(oracleError);
 
         // Update transaction with failure
         await prisma.oracleTransaction.update({
           where: { id: transaction.id },
           data: {
             status: OracleTransactionStatus.FAILED,
-            status_message: oracleError?.message || 'Oracle update error',
+            status_message: errorMessage || 'Oracle update error',
             last_checked_at: new Date()
           }
         });

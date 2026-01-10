@@ -19,7 +19,8 @@ import {
     applyParamsToScript,
     Constr,
     validatorToAddress,
-    type UTxO
+    type UTxO,
+    type LucidEvolution
 } from "@lucid-evolution/lucid";
 import { getAddressDetails } from "@lucid-evolution/utils";
 import { C } from "lucid-cardano";
@@ -143,7 +144,7 @@ async function initializeLucid(blockfrostApiKey: string, network: "Preprod" | "M
 /**
  * Load wallet from Bech32 root key
  */
-async function loadWallet(lucid: any, privateKey: string): Promise<string> {
+async function loadWallet(lucid: LucidEvolution, privateKey: string): Promise<string> {
     const rootKey = C.Bip32PrivateKey.from_bech32(privateKey);
     const harden = (num: number) => 0x80000000 + num;
     const accountKey = rootKey
@@ -172,10 +173,19 @@ function getOperatorPubKeyHash(walletAddr: string): string {
 /**
  * Load oracle validator from plutus.json
  */
+interface PlutusValidator {
+    title: string;
+    compiledCode: string;
+}
+
+interface PlutusJson {
+    validators: PlutusValidator[];
+}
+
 function loadOracleValidator(): string {
     const plutusJsonPath = resolve(process.cwd(), "onchain/sensors-oracle/plutus.json");
-    const plutusJson = JSON.parse(readFileSync(plutusJsonPath, "utf-8"));
-    const oracleValidator = plutusJson.validators.find((v: any) =>
+    const plutusJson: PlutusJson = JSON.parse(readFileSync(plutusJsonPath, "utf-8"));
+    const oracleValidator = plutusJson.validators.find((v: PlutusValidator) =>
         v.title === "sensor_oracle_ed25519.sensor_oracle_ed25519.spend"
     );
 
@@ -233,7 +243,7 @@ function sensorDataToDatum(data: SensorData): string {
  * Find oracle UTXO by NFT
  */
 async function findOracleUtxo(
-    lucid: any,
+    lucid: LucidEvolution,
     scriptAddress: string,
     nftPolicyId: string,
     nftAssetName: string
@@ -241,7 +251,7 @@ async function findOracleUtxo(
     const scriptUtxos = await lucid.utxosAt(scriptAddress);
     const nftUnit = `${nftPolicyId}${nftAssetName}`;
 
-    const oracleUtxo = scriptUtxos.find((utxo: any) =>
+    const oracleUtxo = scriptUtxos.find((utxo: UTxO) =>
         utxo.assets[nftUnit] === BigInt(1)
     );
 

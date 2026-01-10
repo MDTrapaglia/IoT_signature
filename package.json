@@ -48,6 +48,7 @@
     "db:verify-oracle-address": "tsx scripts/verify_oracle_address.ts",
     "test:e2e": "python3 scripts/test_e2e.py",
     "test:e2e:watch": "python3 scripts/test_e2e.py --watch",
+    "validate:contracts": "tsx scripts/validate_contracts.ts",
     "setup:collateral": "tsx scripts/setup_collateral.ts",
     "bug:meshjs": "tsx offchain/transactions/meshjs_plutus_v3_bug_minimal.ts"
   },

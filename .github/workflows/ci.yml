@@ -30,9 +30,9 @@ jobs:
 
       - name: Lint backend
         run: npm run lint:backend
-        continue-on-error: true
 
       - name: Build backend
+        id: build-backend
         run: npm run build:backend
 
       - name: Verify backend build output
@@ -54,7 +54,7 @@ jobs:
           name: backend-build
           path: dist/
           retention-days: 7
-        if: success()
+        if: steps.build-backend.outcome == 'success'
 
   # Frontend Build & Test
   frontend:
@@ -83,6 +83,7 @@ jobs:
         run: npm run lint
 
       - name: Build frontend
+        id: build-frontend
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001
@@ -103,7 +104,7 @@ jobs:
           name: frontend-build
           path: offchain/frontend/.next
           retention-days: 7
-        if: success()
+        if: steps.build-frontend.outcome == 'success'
 
   # Integration Tests
   integration:
