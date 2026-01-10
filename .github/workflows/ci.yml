@@ -61,10 +61,6 @@ jobs:
     name: Frontend CI
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: offchain/frontend
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,18 +74,22 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: offchain/frontend
 
       - name: Lint frontend
         run: npm run lint
+        working-directory: offchain/frontend
 
       - name: Build frontend
         id: build-frontend
         run: npm run build
+        working-directory: offchain/frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001
           NEXT_PUBLIC_ACCESS_TOKEN: test_token_for_ci
 
       - name: Verify frontend build output
+        working-directory: offchain/frontend
         run: |
           if [ ! -d ".next" ]; then
             echo "Error: .next directory not found after build"
@@ -102,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: .next
+          path: offchain/frontend/.next
           retention-days: 7
         if: steps.build-frontend.outcome == 'success'
 
