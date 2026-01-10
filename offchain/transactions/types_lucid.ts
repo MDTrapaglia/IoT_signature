@@ -5,7 +5,7 @@
  * for interacting with Plutus V3 smart contracts using Lucid Evolution.
  */
 
-import { Data } from "@lucid-evolution/lucid";
+import { Data, Constr } from "@lucid-evolution/lucid";
 
 // ============================================================================
 // Sensor Data Schema
@@ -36,7 +36,7 @@ export const SensorDataSchema = Data.Object({
  */
 export type SensorData = Data.Static<typeof SensorDataSchema>;
 
-// Cast for easier usage
+// Cast for easier usage (required for Data.to() second parameter)
 export const SensorDataCast = SensorDataSchema as unknown as SensorData;
 
 // ============================================================================
@@ -80,13 +80,13 @@ export const OracleRedeemer = {
      * Update redeemer (constructor 0)
      * Used when updating oracle with new sensor readings
      */
-    Update: () => Data.to(new Data.Constr(0, [])),
+    Update: () => Data.to(new Constr(0, [])),
 
     /**
      * Delete redeemer (constructor 1)
      * Used when deleting oracle and recovering funds
      */
-    Delete: () => Data.to(new Data.Constr(1, []))
+    Delete: () => Data.to(new Constr(1, []))
 };
 
 // ============================================================================
@@ -135,7 +135,7 @@ export function sensorDataToDatum(data: SensorDataInput): string {
         timestamp: BigInt(data.timestamp),
         signature: data.signature, // Already hex string
         public_key: data.public_key // Already hex string
-    }, SensorDataSchema);
+    }, SensorDataCast);
 }
 
 /**
@@ -145,7 +145,7 @@ export function sensorDataToDatum(data: SensorDataInput): string {
  * @returns Parsed sensor data
  */
 export function datumToSensorData(datumCbor: string): SensorDataInput {
-    const parsed = Data.from(datumCbor, SensorDataSchema);
+    const parsed = Data.from(datumCbor, SensorDataCast);
 
     return {
         sensor_id: Buffer.from(parsed.sensor_id, 'hex').toString('utf8'),

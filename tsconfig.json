@@ -45,6 +45,21 @@
     "node_modules",
     "dist",
     "offchain/frontend",
-    "offchain/backend/srial_index.ts"
+    "offchain/backend/srial_index.ts",
+    "offchain/transactions/experiments/**/*",
+    "offchain/transactions/*meshjs*.ts",
+    "offchain/transactions/consume_ecdsa_utxo_meshjs.ts",
+    "offchain/transactions/test_ecdsa_onchain.ts",
+    "offchain/transactions/test_ed25519_consume.ts",
+    "offchain/transactions/test_simple_consume.ts",
+    "offchain/transactions/test_simple_validator.ts",
+    "offchain/transactions/test_oracle_consume.ts",
+    "offchain/transactions/test_update_manual.ts",
+    "offchain/transactions/mint_sensor_nft.ts",
+    "offchain/transactions/create_oracle.ts",
+    "offchain/transactions/update_oracle.ts",
+    "offchain/transactions/delete_oracle.ts",
+    "offchain/transactions/consume_ecdsa_utxo_lucid.ts",
+    "offchain/transactions/utils/convert_key.ts"
   ]
 }
