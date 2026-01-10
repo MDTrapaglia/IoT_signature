@@ -7,6 +7,7 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { SensorListView } from './components/sensors/SensorListView';
 import { TransactionHistoryView } from './components/transactions/TransactionHistoryView';
 import { MeasurementTimelineView } from './components/measurements/MeasurementTimelineView';
+import ManualSubmitView from './components/submit/ManualSubmitView';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -21,6 +22,7 @@ export default function Home() {
         {activeTab === 'sensors' && <SensorListView />}
         {activeTab === 'transactions' && <TransactionHistoryView />}
         {activeTab === 'measurements' && <MeasurementTimelineView />}
+        {activeTab === 'submit' && <ManualSubmitView />}
       </main>
     </div>
   );

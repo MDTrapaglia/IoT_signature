@@ -1,6 +1,6 @@
-import { LayoutDashboard, Cpu, Link, Activity } from 'lucide-react';
+import { LayoutDashboard, Cpu, Link, Activity, Send } from 'lucide-react';
 
-export type TabId = 'dashboard' | 'sensors' | 'transactions' | 'measurements';
+export type TabId = 'dashboard' | 'sensors' | 'transactions' | 'measurements' | 'submit';
 
 interface TabNavigationProps {
   activeTab: TabId;
@@ -12,6 +12,7 @@ const tabs = [
   { id: 'sensors' as TabId, label: 'Sensores', icon: Cpu },
   { id: 'transactions' as TabId, label: 'Blockchain', icon: Link },
   { id: 'measurements' as TabId, label: 'Mediciones', icon: Activity },
+  { id: 'submit' as TabId, label: 'Enviar Medición', icon: Send },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {

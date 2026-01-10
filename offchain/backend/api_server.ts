@@ -7,6 +7,7 @@ import { sensorService } from './services/sensor.service.js';
 import { transactionService } from './services/transaction.service.js';
 import { oracleSubmissionService } from './services/oracle-submission.service.js';
 import { txMonitorService } from './services/tx-monitor.service.js';
+import { signingService } from './services/signing.service.js';
 import { buildMessage, verifyHash, calculateHash } from './utils/message-builder.js';
 import { verifyEd25519Signature } from './utils/signature-verification.js';
 import type { ArduinoPayload } from './types/index.js';
@@ -106,10 +107,23 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
     console.log(`❌ Hash no corresponde al mensaje para sensor ${payload.sensor_id}`);
     console.log(`   Hash calculado: ${calculatedHash.substring(0, 16)}...`);
     console.log(`   Hash provisto:  ${payload.hash.substring(0, 16)}...`);
+
+    // Guardar medición con verified: false para demostrar rechazo on-chain
+    const measurement = await measurementService.create({
+      ...payload,
+      message: messageHex,
+      verified: false,
+      received_timestamp: Date.now()
+    });
+
+    console.log(`💾 Saved measurement with invalid hash ${measurement.id} for sensor ${payload.sensor_id}`);
+    console.log(`⚠️  This measurement will be sent to Cardano but rejected by on-chain validator`);
+
     return res.status(400).json({
       status: "error",
       error: "El hash no corresponde al mensaje proporcionado",
       verified: false,
+      measurement_id: measurement.id,
       expected_hash: calculatedHash,
       provided_hash: payload.hash,
       message: messageHex
@@ -135,11 +149,13 @@ app.post('/api/ingest', validateToken, async (req: Request, res: Response) => {
     });
 
     console.log(`💾 Saved invalid measurement ${measurement.id} for sensor ${payload.sensor_id}`);
+    console.log(`⚠️  This measurement will be sent to Cardano but rejected by on-chain validator`);
 
     return res.status(401).json({
       status: "error",
       error: "Firma Ed25519 inválida",
-      verified: false
+      verified: false,
+      measurement_id: measurement.id
     });
   }
 
@@ -262,7 +278,66 @@ app.get('/api/transactions', validateToken, async (req: Request, res: Response) 
   res.json(serialized);
 });
 
-// 6. RUTA GET: Estadísticas agregadas
+// 6. RUTA POST: Sign hash or message with server Ed25519 key
+app.post('/api/sign', validateToken, async (req: Request, res: Response) => {
+  try {
+    // Check if signing service is available
+    if (!signingService.isAvailable()) {
+      return res.status(503).json({
+        error: 'Signing service not available. ED25519_PRIVATE_KEY not configured.'
+      });
+    }
+
+    const { hash, sensor_id, temperature, humidity, timestamp } = req.body;
+
+    // Option 1: Sign hash directly
+    if (hash) {
+      // Validate hash format
+      if (!/^[0-9a-fA-F]{64}$/.test(hash)) {
+        return res.status(400).json({
+          error: 'Invalid hash format. Expected 64 hex characters (SHA-256).'
+        });
+      }
+
+      const result = await signingService.signHash(hash);
+      return res.status(200).json({
+        hash,
+        signature: result.signature,
+        publicKey: result.publicKey
+      });
+    }
+
+    // Option 2: Build message, calculate hash, and sign
+    if (sensor_id) {
+      const result = await signingService.signMessage({
+        sensor_id,
+        temperature,
+        humidity,
+        timestamp
+      });
+
+      return res.status(200).json({
+        hash: result.hash,
+        signature: result.signature,
+        publicKey: result.publicKey,
+        message: result.message
+      });
+    }
+
+    // Neither option provided
+    return res.status(400).json({
+      error: 'Missing required fields. Provide either "hash" or "sensor_id" with optional data fields.'
+    });
+
+  } catch (error: any) {
+    console.error('Error signing:', error);
+    return res.status(500).json({
+      error: error.message || 'Internal server error while signing'
+    });
+  }
+});
+
+// 7. RUTA GET: Estadísticas agregadas
 app.get('/api/statistics', validateToken, async (req: Request, res: Response) => {
   const [measurementStats, sensorStats, txStats] = await Promise.all([
     // Measurement statistics

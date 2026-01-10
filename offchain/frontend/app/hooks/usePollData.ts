@@ -11,18 +11,22 @@ export function usePollData<T>(endpoint: string, interval: number = 5000) {
   const fetchData = useCallback(async () => {
     try {
       const url = `${API_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}token=${ACCESS_TOKEN}`;
+      console.log(`[usePollData] Fetching: ${url}`);
       const res = await fetch(url);
 
       if (!res.ok) {
+        console.error(`[usePollData] HTTP Error: ${res.status} ${res.statusText}`);
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
 
       const json = await res.json();
+      console.log(`[usePollData] Success:`, json);
       setData(json);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      console.error('Error fetching data:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+      console.error('[usePollData] Error fetching data:', err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

@@ -10,8 +10,32 @@ import type { Measurement } from '../types';
 export function MeasurementTimelineView() {
   const { data: measurements, loading, error } = usePollData<Measurement[]>('/api/measurements?limit=20', 5000);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorAlert message={error} />;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-zinc-400">Cargando mediciones desde el backend...</p>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <ErrorAlert message={error} />
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+          <p className="text-sm text-zinc-400 mb-2">Información de debug:</p>
+          <p className="text-xs font-mono text-zinc-500">
+            Verifica la consola del navegador (F12) para más detalles.
+          </p>
+          <p className="text-xs font-mono text-zinc-500 mt-2">
+            API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!measurements || measurements.length === 0) return <EmptyState message="No hay mediciones" />;
 
   return (

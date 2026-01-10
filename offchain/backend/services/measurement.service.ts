@@ -54,12 +54,13 @@ class MeasurementService {
   }
 
   /**
-   * Get unsubmitted measurements (verified but not linked to transaction)
+   * Get unsubmitted measurements (all measurements not linked to transaction)
+   * Note: Includes both verified AND unverified measurements to allow
+   * demonstrating on-chain validator rejection of invalid signatures
    */
   async getUnsubmitted(): Promise<Measurement[]> {
     return prisma.measurement.findMany({
       where: {
-        verified: true,
         oracle_transaction_id: null
       },
       orderBy: { received_at: 'asc' }
