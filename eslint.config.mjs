@@ -22,7 +22,9 @@ export default [
         setTimeout: 'readonly',
         setInterval: 'readonly',
         clearTimeout: 'readonly',
-        clearInterval: 'readonly'
+        clearInterval: 'readonly',
+        global: 'readonly',
+        NodeJS: 'readonly'
       }
     },
     plugins: {
@@ -47,6 +49,8 @@ export default [
       'node_modules/**',
       'offchain/frontend/**',
       'offchain/backend/srial_index.ts',
+      'offchain/transactions/experiments/**',
+      'offchain/transactions/utils/convert_key.ts',
       '**/*.js',
       '**/*.mjs',
       '**/*.d.ts',
