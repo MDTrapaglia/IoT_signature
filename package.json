@@ -57,18 +57,15 @@
   "description": "",
   "dependencies": {
     "@lucid-evolution/lucid": "^0.4.29",
-    "@meshsdk/core": "^1.9.0-beta.90",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "elliptic": "^6.6.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "lucid-cardano": "^0.10.11"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
-    "@types/elliptic": "^6.4.18",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.3",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
@@ -78,5 +75,10 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "npm": "^11.6.2",
+    "brace-expansion": "^2.0.2",
+    "glob": "^11.0.0"
   }
 }
