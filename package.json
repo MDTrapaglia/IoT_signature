@@ -62,7 +62,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
-    "lucid-cardano": "^0.10.11"
+    "lucid-cardano": "^0.10.11",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

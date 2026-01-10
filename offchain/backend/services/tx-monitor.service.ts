@@ -1,6 +1,5 @@
 import { prisma } from '../config/prisma.js';
 import { OracleTransactionStatus } from '@prisma/client';
-import { BlockfrostProvider } from '@meshsdk/core';
 
 class TransactionMonitorService {
   private intervalId: NodeJS.Timeout | null = null;
@@ -97,14 +96,36 @@ class TransactionMonitorService {
         return;
       }
 
-      const blockfrost = new BlockfrostProvider(process.env.BLOCKFROST_API_KEY);
+      // Query transaction info from Blockfrost API directly
+      const response = await fetch(`https://cardano-preprod.blockfrost.io/api/v0/txs/${tx_hash}`, {
+        headers: {
+          'project_id': process.env.BLOCKFROST_API_KEY
+        }
+      });
 
-      // Query transaction info from Blockfrost
-      const txInfo = await blockfrost.fetchTxInfo(tx_hash);
+      if (response.status === 404) {
+        // Transaction not found yet (still in mempool or not submitted)
+        console.log(`⏳ Transaction ${tx_hash} still pending...`);
+
+        await prisma.oracleTransaction.update({
+          where: { id: transaction_id },
+          data: {
+            last_checked_at: new Date(),
+            status_message: 'Awaiting confirmation'
+          }
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Blockfrost API error: ${response.status} ${response.statusText}`);
+      }
+
+      const txInfo = await response.json();
 
       if (txInfo && txInfo.block) {
         // Transaction confirmed!
-        console.log(`✅ Transaction ${tx_hash} confirmed in block ${txInfo.blockHeight || 'unknown'}`);
+        console.log(`✅ Transaction ${tx_hash} confirmed in block ${txInfo.block_height || 'unknown'}`);
 
         const updateData: any = {
           status: OracleTransactionStatus.CONFIRMED,
@@ -113,12 +134,12 @@ class TransactionMonitorService {
           status_message: 'Confirmed on blockchain'
         };
 
-        if (txInfo.blockHeight !== undefined) {
-          updateData.block_height = txInfo.blockHeight;
+        if (txInfo.block_height !== undefined) {
+          updateData.block_height = txInfo.block_height;
         }
 
-        if (txInfo.blockTime !== undefined) {
-          updateData.block_time = new Date(txInfo.blockTime * 1000);
+        if (txInfo.block_time !== undefined) {
+          updateData.block_time = new Date(txInfo.block_time * 1000);
         }
 
         if (txInfo.slot !== undefined) {
