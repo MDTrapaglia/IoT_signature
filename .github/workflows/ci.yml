@@ -98,6 +98,19 @@ jobs:
           echo "Build output verified:"
           ls -la .next
 
+      - name: Debug - Show directory structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Repository root contents:"
+          ls -la
+          echo "offchain directory:"
+          ls -la offchain/ || echo "offchain not found"
+          echo "offchain/frontend directory:"
+          ls -la offchain/frontend/ || echo "offchain/frontend not found"
+          echo "Looking for .next:"
+          find . -name ".next" -type d 2>/dev/null || echo "No .next directory found"
+
       - name: Upload frontend artifacts
         uses: actions/upload-artifact@v4
         with:
