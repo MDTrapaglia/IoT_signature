@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const DEFAULT_API_URL = process.env.NODE_ENV === 'production' ? '/iot' : 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
 const ACCESS_TOKEN = process.env.NEXT_PUBLIC_ACCESS_TOKEN || 'gaelito2025';
 
 export function usePollData<T>(endpoint: string, interval: number = 5000) {

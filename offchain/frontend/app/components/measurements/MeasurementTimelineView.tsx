@@ -29,7 +29,7 @@ export function MeasurementTimelineView() {
             Verifica la consola del navegador (F12) para más detalles.
           </p>
           <p className="text-xs font-mono text-zinc-500 mt-2">
-            API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}
+            API URL: {process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/iot' : 'http://localhost:3001')}
           </p>
         </div>
       </div>
