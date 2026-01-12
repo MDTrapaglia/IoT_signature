@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -39,6 +40,7 @@ app.use(cors({
       'http://localhost:3000',
       'http://127.0.0.1:3000',
       'http://192.168.100.200:3000',
+      'https://matiastrapaglia.space',
       'http://186.123.164.151:3000'
     ];
 
@@ -406,4 +408,3 @@ process.on('SIGTERM', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
-
