@@ -42,6 +42,7 @@ logs/
 
 # Temporary files
 docs/temp/
+plans/
 
 # Nix
 .direnv/
@@ -51,3 +52,4 @@ result-*
 
 # Claude Code documentation
 CLAUDE.md
+AGENTS.md
