@@ -1,0 +1,17 @@
+[Unit]
+Description=IoT Oracle Backend (Express + auto-submission)
+After=network-online.target
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mtrapaglia/projects/esp32_sign/full_stack
+Environment=NODE_ENV=development
+Environment=BACKEND_COMMAND=dev
+EnvironmentFile=-/home/mtrapaglia/projects/esp32_sign/full_stack/.env
+ExecStart=/home/mtrapaglia/projects/esp32_sign/full_stack/scripts/systemd/start-backend.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

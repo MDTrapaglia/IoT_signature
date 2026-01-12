@@ -1,0 +1,17 @@
+[Unit]
+Description=IoT Oracle Frontend (Next.js dashboard)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mtrapaglia/projects/esp32_sign/full_stack/offchain/frontend
+Environment=NODE_ENV=development
+Environment=FRONTEND_COMMAND=dev
+EnvironmentFile=-/home/mtrapaglia/projects/esp32_sign/full_stack/offchain/frontend/.env.local
+ExecStart=/home/mtrapaglia/projects/esp32_sign/full_stack/scripts/systemd/start-frontend.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

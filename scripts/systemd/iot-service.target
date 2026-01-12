@@ -1,0 +1,8 @@
+[Unit]
+Description=IoT Oracle stack (backend + frontend)
+Requires=iot-service-backend.service iot-service-frontend.service
+After=network-online.target
+Wants=network-online.target
+
+[Install]
+WantedBy=default.target
