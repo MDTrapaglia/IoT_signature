@@ -62,7 +62,13 @@ export function buildMessageClient(data: MessageData): Uint8Array {
  */
 export function calculateHashClient(message: Uint8Array): string {
   // Convert Uint8Array to WordArray (crypto-js format)
-  const wordArray = CryptoJS.lib.WordArray.create(message as any);
+  const wordArray = CryptoJS.lib.WordArray.create(
+    Array.from(message).reduce((words: number[], byte, i) => {
+      words[i >>> 2] |= byte << (24 - (i % 4) * 8);
+      return words;
+    }, []),
+    message.length
+  );
 
   // Calculate SHA-256 hash
   const hash = CryptoJS.SHA256(wordArray);

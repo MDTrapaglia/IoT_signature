@@ -9,6 +9,9 @@ import { buildMessageClient, calculateHashClient } from '@/app/utils/message-bui
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const ACCESS_TOKEN = process.env.NEXT_PUBLIC_ACCESS_TOKEN || 'gaelito2025';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 export default function ManualSubmitView() {
   // Form data
   const [formData, setFormData] = useState({
@@ -61,7 +64,7 @@ export default function ManualSubmitView() {
       } else {
         setHashWarning(null);
       }
-    } catch (err) {
+    } catch {
       // Ignore validation errors
     }
   };
@@ -101,8 +104,8 @@ export default function ManualSubmitView() {
 
       setHash(calculatedHash);
       setHashWarning(null); // Hash is valid since we just generated it
-    } catch (err: any) {
-      setError(`Error generating hash: ${err.message}`);
+    } catch (err: unknown) {
+      setError(`Error generating hash: ${getErrorMessage(err, 'Unknown error')}`);
     } finally {
       setGeneratingHash(false);
     }
@@ -136,8 +139,8 @@ export default function ManualSubmitView() {
       setSignature(data.signature);
       setPublicKey(data.publicKey);
       setSignatureWarning(null); // Signature is valid since we just got it from server
-    } catch (err: any) {
-      setError(`Error signing: ${err.message}`);
+    } catch (err: unknown) {
+      setError(`Error signing: ${getErrorMessage(err, 'Unknown error')}`);
     } finally {
       setSigning(false);
     }
@@ -210,8 +213,8 @@ export default function ManualSubmitView() {
         setSuccess(successMsg);
       }
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to submit measurement'));
     } finally {
       setLoading(false);
     }
@@ -232,7 +235,7 @@ export default function ManualSubmitView() {
       <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
         <p className="text-sm text-zinc-400">
           Fill in sensor data, generate SHA-256 hash, sign with server key, and submit to the backend.
-          After submission, you'll be redirected to the measurements tab.
+          After submission, you&apos;ll be redirected to the measurements tab.
         </p>
       </div>
 
