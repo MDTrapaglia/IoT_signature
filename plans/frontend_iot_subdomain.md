@@ -37,12 +37,14 @@ Objetivo: servir el frontend de Next.js en la ruta `/iot` (subpath) de `matiastr
 - [x] Pruebas curl (remoto): `/iot` → 301 a `/iot/` (OK); `/iot/api/measurements?...` → 200 JSON de la API (nginx proxy funcional).
 - [x] Ajuste de base API en frontend a `/iot` (evita doble `/api` en peticiones); `.env.example` actualizado.
 - [x] `.env.local` actualizado a `https://matiastrapaglia.space/iot` y build ejecutado en `offchain/frontend` (`npm run build`).
+- [x] Se añadió fallback nginx para `/api/` (sin `/iot`) apuntando al backend para compatibilidad con clientes viejos; verificado con curl que `/api/measurements?...` responde 200.
 
 ## Acciones aplicadas en servidor
 - Copiado y habilitado `configs/nginx/matiastrapaglia_iot.conf` en `/etc/nginx/sites-available` + symlink en `sites-enabled`.
 - Deshabilitado site previo `iot` (backup en `/etc/nginx/sites-available/iot.bak`).
 - `nginx -t` sin errores (se removió warn de http2); reload exitoso.
 - Backend operativo en `127.0.0.1:3001`; proxy `/iot/api` devuelve JSON 200 con token válido.
+- Fallback `/api/` también proxya a 3001; útil si algún cliente sigue usando la URL antigua sin `/iot`.
 
 ## Ejemplo de config nginx (server block `matiastrapaglia.space`)
 ```
