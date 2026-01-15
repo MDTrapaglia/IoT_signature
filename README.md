@@ -1,6 +1,6 @@
 # ESP32 IoT Data Certification System on Cardano
 
-**Live dashboard:** https://matiastrapaglia.space/?token=gaelito2025
+**Live dashboard:** [https://matiastrapaglia.space/?token=gaelito2025](https://186.123.164.151/iot/?token=gaelito2025)
 
 [![CI/CD Pipeline](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml/badge.svg)](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml)
 
