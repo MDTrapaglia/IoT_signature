@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getApiBaseUrl, API_ACCESS_TOKEN } from '../utils/api';
 
-const DEFAULT_API_URL = process.env.NODE_ENV === 'production' ? '/iot' : 'http://localhost:3001';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
-const ACCESS_TOKEN = process.env.NEXT_PUBLIC_ACCESS_TOKEN || 'gaelito2025';
+const API_URL = getApiBaseUrl();
+const ACCESS_TOKEN = API_ACCESS_TOKEN;
 
 export function usePollData<T>(endpoint: string, interval: number = 5000) {
   const [data, setData] = useState<T | null>(null);

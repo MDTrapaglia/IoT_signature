@@ -40,6 +40,9 @@ Thumbs.db
 logs/
 *.log
 
+# Local backups (do not commit)
+backup/
+
 # Temporary files
 docs/temp/
 

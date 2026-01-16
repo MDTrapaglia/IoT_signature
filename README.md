@@ -1,6 +1,6 @@
 # ESP32 IoT Data Certification System on Cardano
 
-**Live dashboard:** [https://matiastrapaglia.space/?token=gaelito2025](https://186.123.164.151/iot/?token=gaelito2025)
+**Live dashboard:** https://matiastrapaglia.space/iot?token=gaelito2025 (production base path `/iot`)
 
 [![CI/CD Pipeline](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml/badge.svg)](https://github.com/MDTrapaglia/IoT_signature/actions/workflows/ci.yml)
 
@@ -56,6 +56,7 @@ Production-ready IoT data certification system that captures sensor measurements
 - **Directory:** `offchain/frontend/`
 - **Port:** 3000
 - **Config:** `offchain/frontend/.env.local` (API URL and access token)
+- **Production routing:** Served behind Nginx at `/iot` with API under `/iot/api` (see `configs/nginx/matiastrapaglia_iot.conf` and `next.config.ts`)
 
 ## Data Flow
 

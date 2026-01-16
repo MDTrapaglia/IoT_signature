@@ -5,10 +5,10 @@ import { Send, Hash, Key, Check, Loader2, RefreshCw } from 'lucide-react';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { buildMessageClient, calculateHashClient } from '@/app/utils/message-builder';
+import { getApiBaseUrl, API_ACCESS_TOKEN } from '@/app/utils/api';
 
-const DEFAULT_API_URL = process.env.NODE_ENV === 'production' ? '/iot' : 'http://localhost:3001';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
-const ACCESS_TOKEN = process.env.NEXT_PUBLIC_ACCESS_TOKEN || 'gaelito2025';
+const API_URL = getApiBaseUrl();
+const ACCESS_TOKEN = API_ACCESS_TOKEN;
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
