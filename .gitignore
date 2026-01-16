@@ -43,6 +43,9 @@ logs/
 # Local backups (do not commit)
 backup/
 
+# Local plans (do not commit)
+plans/
+
 # Temporary files
 docs/temp/
 
