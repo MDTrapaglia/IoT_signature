@@ -4,40 +4,56 @@ import { getApiBaseUrl, API_ACCESS_TOKEN } from '../utils/api';
 const API_URL = getApiBaseUrl();
 const ACCESS_TOKEN = API_ACCESS_TOKEN;
 
-export function usePollData<T>(endpoint: string, interval: number = 5000) {
+export function useFetchData<T>(endpoint: string) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isManual = false) => {
+    if (isManual) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const url = `${API_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}token=${ACCESS_TOKEN}`;
-      console.log(`[usePollData] Fetching: ${url}`);
       const res = await fetch(url);
 
       if (!res.ok) {
-        console.error(`[usePollData] HTTP Error: ${res.status} ${res.statusText}`);
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
 
       const json = await res.json();
-      console.log(`[usePollData] Success:`, json);
       setData(json);
       setError(null);
+      setLastUpdated(new Date());
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
-      console.error('[usePollData] Error fetching data:', err);
       setError(errorMsg);
     } finally {
-      setLoading(false);
+      if (isManual) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, [endpoint]);
 
   useEffect(() => {
-    fetchData();
-    const id = setInterval(fetchData, interval);
-    return () => clearInterval(id);
-  }, [fetchData, interval]);
+    fetchData(false);
+  }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return {
+    data,
+    loading,
+    refreshing,
+    error,
+    lastUpdated,
+    timeZone,
+    refetch: () => fetchData(true)
+  };
 }

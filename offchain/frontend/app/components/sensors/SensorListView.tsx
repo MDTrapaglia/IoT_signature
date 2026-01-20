@@ -1,14 +1,32 @@
 'use client';
 
-import { Cpu, CheckCircle, XCircle } from 'lucide-react';
-import { usePollData } from '../../hooks/usePollData';
+import { Cpu, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { useFetchData } from '../../hooks/useFetchData';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
 import type { Sensor } from '../types';
 
 export function SensorListView() {
-  const { data: sensors, loading, error } = usePollData<Sensor[]>('/api/sensors', 10000);
+  const {
+    data: sensors,
+    loading,
+    refreshing,
+    error,
+    lastUpdated,
+    timeZone,
+    refetch
+  } = useFetchData<Sensor[]>('/api/sensors');
+
+  const formatDateTime = (date: Date | null) =>
+    date
+      ? new Intl.DateTimeFormat('es-ES', {
+          dateStyle: 'short',
+          timeStyle: 'medium',
+          timeZone
+        }).format(date)
+      : 'Nunca';
+  const now = new Date();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -17,9 +35,26 @@ export function SensorListView() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-zinc-100">Sensores Activos</h2>
-        <span className="text-sm text-zinc-400">{sensors.length} sensores</span>
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-100">Sensores Activos</h2>
+          <p className="text-sm text-zinc-400">Configuración registrada en el backend</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-400">{sensors.length} sensores</span>
+          <button
+            onClick={refetch}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={refreshing}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
+        </div>
       </div>
+      <p className="text-sm text-zinc-400">
+        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
+        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sensors.map((sensor) => (

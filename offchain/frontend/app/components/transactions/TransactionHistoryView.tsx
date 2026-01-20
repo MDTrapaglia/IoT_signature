@@ -1,7 +1,7 @@
 'use client';
 
-import { ExternalLink, Copy } from 'lucide-react';
-import { usePollData } from '../../hooks/usePollData';
+import { ExternalLink, Copy, RefreshCw } from 'lucide-react';
+import { useFetchData } from '../../hooks/useFetchData';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
@@ -11,7 +11,25 @@ import type { OracleTransaction } from '../types';
 const EXPLORER_URL = 'https://preprod.cardanoscan.io';
 
 export function TransactionHistoryView() {
-  const { data: transactions, loading, error } = usePollData<OracleTransaction[]>('/api/transactions?limit=20', 10000);
+  const {
+    data: transactions,
+    loading,
+    refreshing,
+    error,
+    lastUpdated,
+    timeZone,
+    refetch
+  } = useFetchData<OracleTransaction[]>('/api/transactions?limit=20');
+
+  const formatDateTime = (date: Date | null) =>
+    date
+      ? new Intl.DateTimeFormat('es-ES', {
+          dateStyle: 'short',
+          timeStyle: 'medium',
+          timeZone
+        }).format(date)
+      : 'Nunca';
+  const now = new Date();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -24,9 +42,26 @@ export function TransactionHistoryView() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-zinc-100">Historial de Transacciones</h2>
-        <span className="text-sm text-zinc-400">{transactions.length} transacciones</span>
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-100">Historial de Transacciones</h2>
+          <p className="text-sm text-zinc-400">Últimas operaciones enviadas a Cardano</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-400">{transactions.length} transacciones</span>
+          <button
+            onClick={refetch}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={refreshing}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
+        </div>
       </div>
+      <p className="text-sm text-zinc-400">
+        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
+        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+      </p>
 
       <div className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">

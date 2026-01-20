@@ -1,14 +1,32 @@
 'use client';
 
-import { CheckCircle, XCircle, Send, Anchor, ArrowRight } from 'lucide-react';
-import { usePollData } from '../../hooks/usePollData';
+import { CheckCircle, XCircle, Send, Anchor, ArrowRight, RefreshCw } from 'lucide-react';
+import { useFetchData } from '../../hooks/useFetchData';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
 import type { Measurement } from '../types';
 
 export function MeasurementTimelineView() {
-  const { data: measurements, loading, error } = usePollData<Measurement[]>('/api/measurements?limit=20', 5000);
+  const {
+    data: measurements,
+    loading,
+    refreshing,
+    error,
+    lastUpdated,
+    timeZone,
+    refetch
+  } = useFetchData<Measurement[]>('/api/measurements?limit=20');
+
+  const formatDateTime = (date: Date | null) =>
+    date
+      ? new Intl.DateTimeFormat('es-ES', {
+          dateStyle: 'short',
+          timeStyle: 'medium',
+          timeZone
+        }).format(date)
+      : 'Nunca';
+  const now = new Date();
 
   if (loading) {
     return (
@@ -42,8 +60,22 @@ export function MeasurementTimelineView() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-zinc-100">Timeline de Mediciones</h2>
-        <span className="text-sm text-zinc-400">{measurements.length} mediciones</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-400">{measurements.length} mediciones</span>
+          <button
+            onClick={refetch}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={refreshing}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
+        </div>
       </div>
+      <p className="text-sm text-zinc-400">
+        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
+        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+      </p>
 
       <div className="space-y-4">
         {measurements.map((measurement) => {

@@ -1,16 +1,64 @@
 'use client';
 
-import { CheckCircle, XCircle, Clock, Cpu, Link } from 'lucide-react';
-import { usePollData } from '../../hooks/usePollData';
+import { CheckCircle, XCircle, Clock, Cpu, Link, RefreshCw } from 'lucide-react';
+import { useFetchData } from '../../hooks/useFetchData';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import type { Statistics, Measurement, OracleTransaction } from '../types';
 import { StatsCard } from './StatsCard';
 
 export function DashboardView() {
-  const { data: stats, loading: statsLoading, error: statsError } = usePollData<Statistics>('/api/statistics', 10000);
-  const { data: measurements, loading: measurementsLoading, error: measurementsError } = usePollData<Measurement[]>('/api/measurements?limit=5', 5000);
-  const { data: transactions, loading: transactionsLoading, error: transactionsError } = usePollData<OracleTransaction[]>('/api/transactions?limit=5', 10000);
+  const {
+    data: stats,
+    loading: statsLoading,
+    refreshing: statsRefreshing,
+    error: statsError,
+    lastUpdated: statsUpdated,
+    timeZone: statsTimeZone,
+    refetch: refetchStats
+  } = useFetchData<Statistics>('/api/statistics');
+  const {
+    data: measurements,
+    loading: measurementsLoading,
+    refreshing: measurementsRefreshing,
+    error: measurementsError,
+    lastUpdated: measurementsUpdated,
+    timeZone: measurementsTimeZone,
+    refetch: refetchMeasurements
+  } = useFetchData<Measurement[]>('/api/measurements?limit=5');
+  const {
+    data: transactions,
+    loading: transactionsLoading,
+    refreshing: transactionsRefreshing,
+    error: transactionsError,
+    lastUpdated: transactionsUpdated,
+    timeZone: transactionsTimeZone,
+    refetch: refetchTransactions
+  } = useFetchData<OracleTransaction[]>('/api/transactions?limit=5');
+
+  const isLoading = statsLoading || measurementsLoading || transactionsLoading;
+  const isBusy = isLoading || statsRefreshing || measurementsRefreshing || transactionsRefreshing;
+  const timeZone = statsTimeZone || measurementsTimeZone || transactionsTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const lastUpdated = [statsUpdated, measurementsUpdated, transactionsUpdated].reduce<Date | null>((latest, current) => {
+    if (!current) return latest;
+    if (!latest || current > latest) return current;
+    return latest;
+  }, null);
+  const formatDateTime = (date: Date | null) =>
+    date
+      ? new Intl.DateTimeFormat('es-ES', {
+          dateStyle: 'short',
+          timeStyle: 'medium',
+          timeZone
+        }).format(date)
+      : 'Nunca';
+  const now = new Date();
+
+  const handleRefresh = () => {
+    refetchStats();
+    refetchMeasurements();
+    refetchTransactions();
+  };
 
   if (statsLoading && measurementsLoading && transactionsLoading) {
     return <LoadingSpinner />;
@@ -18,6 +66,25 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-100">Panel de Control</h2>
+          <p className="text-sm text-zinc-400">Datos más recientes del backend y la blockchain</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isBusy}
+        >
+          <RefreshCw className="w-4 h-4" />
+          {isBusy ? 'Actualizando...' : 'Actualizar'}
+        </button>
+      </div>
+      <p className="text-sm text-zinc-400">
+        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
+        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+      </p>
+
       {/* Stats Grid */}
       {statsError && <ErrorAlert message={statsError} />}
 
