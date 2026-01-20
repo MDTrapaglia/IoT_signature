@@ -14,6 +14,7 @@ export function MeasurementTimelineView() {
     refreshing,
     error,
     lastUpdated,
+    currentTime,
     timeZone,
     refetch
   } = useFetchData<Measurement[]>('/api/measurements?limit=20');
@@ -22,11 +23,10 @@ export function MeasurementTimelineView() {
     date
       ? new Intl.DateTimeFormat('es-ES', {
           dateStyle: 'short',
-          timeStyle: 'medium',
+          timeStyle: 'short',
           timeZone
         }).format(date)
       : 'Nunca';
-  const now = new Date();
 
   if (loading) {
     return (
@@ -74,7 +74,7 @@ export function MeasurementTimelineView() {
       </div>
       <p className="text-sm text-zinc-400">
         Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
       </p>
 
       <div className="space-y-4">

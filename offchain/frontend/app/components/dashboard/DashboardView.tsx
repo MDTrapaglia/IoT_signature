@@ -14,6 +14,7 @@ export function DashboardView() {
     refreshing: statsRefreshing,
     error: statsError,
     lastUpdated: statsUpdated,
+    currentTime: statsCurrentTime,
     timeZone: statsTimeZone,
     refetch: refetchStats
   } = useFetchData<Statistics>('/api/statistics');
@@ -23,6 +24,7 @@ export function DashboardView() {
     refreshing: measurementsRefreshing,
     error: measurementsError,
     lastUpdated: measurementsUpdated,
+    currentTime: measurementsCurrentTime,
     timeZone: measurementsTimeZone,
     refetch: refetchMeasurements
   } = useFetchData<Measurement[]>('/api/measurements?limit=5');
@@ -32,6 +34,7 @@ export function DashboardView() {
     refreshing: transactionsRefreshing,
     error: transactionsError,
     lastUpdated: transactionsUpdated,
+    currentTime: transactionsCurrentTime,
     timeZone: transactionsTimeZone,
     refetch: refetchTransactions
   } = useFetchData<OracleTransaction[]>('/api/transactions?limit=5');
@@ -39,6 +42,8 @@ export function DashboardView() {
   const isLoading = statsLoading || measurementsLoading || transactionsLoading;
   const isBusy = isLoading || statsRefreshing || measurementsRefreshing || transactionsRefreshing;
   const timeZone = statsTimeZone || measurementsTimeZone || transactionsTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const currentTime =
+    statsCurrentTime || measurementsCurrentTime || transactionsCurrentTime || new Date();
   const lastUpdated = [statsUpdated, measurementsUpdated, transactionsUpdated].reduce<Date | null>((latest, current) => {
     if (!current) return latest;
     if (!latest || current > latest) return current;
@@ -48,11 +53,10 @@ export function DashboardView() {
     date
       ? new Intl.DateTimeFormat('es-ES', {
           dateStyle: 'short',
-          timeStyle: 'medium',
+          timeStyle: 'short',
           timeZone
         }).format(date)
       : 'Nunca';
-  const now = new Date();
 
   const handleRefresh = () => {
     refetchStats();
@@ -82,7 +86,7 @@ export function DashboardView() {
       </div>
       <p className="text-sm text-zinc-400">
         Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
       </p>
 
       {/* Stats Grid */}

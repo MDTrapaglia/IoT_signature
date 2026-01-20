@@ -14,6 +14,7 @@ export function SensorListView() {
     refreshing,
     error,
     lastUpdated,
+    currentTime,
     timeZone,
     refetch
   } = useFetchData<Sensor[]>('/api/sensors');
@@ -22,11 +23,10 @@ export function SensorListView() {
     date
       ? new Intl.DateTimeFormat('es-ES', {
           dateStyle: 'short',
-          timeStyle: 'medium',
+          timeStyle: 'short',
           timeZone
         }).format(date)
       : 'Nunca';
-  const now = new Date();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -53,7 +53,7 @@ export function SensorListView() {
       </div>
       <p className="text-sm text-zinc-400">
         Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

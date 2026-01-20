@@ -17,6 +17,7 @@ export function TransactionHistoryView() {
     refreshing,
     error,
     lastUpdated,
+    currentTime,
     timeZone,
     refetch
   } = useFetchData<OracleTransaction[]>('/api/transactions?limit=20');
@@ -25,11 +26,10 @@ export function TransactionHistoryView() {
     date
       ? new Intl.DateTimeFormat('es-ES', {
           dateStyle: 'short',
-          timeStyle: 'medium',
+          timeStyle: 'short',
           timeZone
         }).format(date)
       : 'Nunca';
-  const now = new Date();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -60,7 +60,7 @@ export function TransactionHistoryView() {
       </div>
       <p className="text-sm text-zinc-400">
         Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(now)}</span> ({timeZone})
+        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
       </p>
 
       <div className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
