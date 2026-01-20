@@ -2,6 +2,7 @@
 
 import { ExternalLink, Copy, RefreshCw } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
+import { useCurrentTime } from '../../hooks/useCurrentTime';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
@@ -17,17 +18,18 @@ export function TransactionHistoryView() {
     refreshing,
     error,
     lastUpdated,
-    currentTime,
     timeZone,
     refetch
   } = useFetchData<OracleTransaction[]>('/api/transactions?limit=20');
+  const { currentTime, timeZone: localTimeZone } = useCurrentTime();
+  const timeZoneToUse = timeZone || localTimeZone;
 
   const formatDateTime = (date: Date | null) =>
     date
       ? new Intl.DateTimeFormat('es-ES', {
           dateStyle: 'short',
           timeStyle: 'short',
-          timeZone
+          timeZone: timeZoneToUse
         }).format(date)
       : 'Nunca';
 

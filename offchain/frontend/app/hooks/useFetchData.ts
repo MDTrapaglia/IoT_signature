@@ -10,7 +10,6 @@ export function useFetchData<T>(endpoint: string) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const fetchData = useCallback(async (isManual = false) => {
@@ -48,18 +47,12 @@ export function useFetchData<T>(endpoint: string) {
     fetchData(false);
   }, [fetchData]);
 
-  useEffect(() => {
-    const id = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(id);
-  }, []);
-
   return {
     data,
     loading,
     refreshing,
     error,
     lastUpdated,
-    currentTime,
     timeZone,
     refetch: () => fetchData(true)
   };

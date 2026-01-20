@@ -2,6 +2,7 @@
 
 import { CheckCircle, XCircle, Clock, Cpu, Link, RefreshCw } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
+import { useCurrentTime } from '../../hooks/useCurrentTime';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import type { Statistics, Measurement, OracleTransaction } from '../types';
@@ -14,7 +15,6 @@ export function DashboardView() {
     refreshing: statsRefreshing,
     error: statsError,
     lastUpdated: statsUpdated,
-    currentTime: statsCurrentTime,
     timeZone: statsTimeZone,
     refetch: refetchStats
   } = useFetchData<Statistics>('/api/statistics');
@@ -24,7 +24,6 @@ export function DashboardView() {
     refreshing: measurementsRefreshing,
     error: measurementsError,
     lastUpdated: measurementsUpdated,
-    currentTime: measurementsCurrentTime,
     timeZone: measurementsTimeZone,
     refetch: refetchMeasurements
   } = useFetchData<Measurement[]>('/api/measurements?limit=5');
@@ -34,16 +33,14 @@ export function DashboardView() {
     refreshing: transactionsRefreshing,
     error: transactionsError,
     lastUpdated: transactionsUpdated,
-    currentTime: transactionsCurrentTime,
     timeZone: transactionsTimeZone,
     refetch: refetchTransactions
   } = useFetchData<OracleTransaction[]>('/api/transactions?limit=5');
+  const { currentTime, timeZone: localTimeZone } = useCurrentTime();
 
   const isLoading = statsLoading || measurementsLoading || transactionsLoading;
   const isBusy = isLoading || statsRefreshing || measurementsRefreshing || transactionsRefreshing;
-  const timeZone = statsTimeZone || measurementsTimeZone || transactionsTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const currentTime =
-    statsCurrentTime || measurementsCurrentTime || transactionsCurrentTime || new Date();
+  const timeZone = statsTimeZone || measurementsTimeZone || transactionsTimeZone || localTimeZone;
   const lastUpdated = [statsUpdated, measurementsUpdated, transactionsUpdated].reduce<Date | null>((latest, current) => {
     if (!current) return latest;
     if (!latest || current > latest) return current;
