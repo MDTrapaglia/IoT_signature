@@ -2,10 +2,10 @@
 
 import { Cpu, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
-import { useCurrentTime } from '../../hooks/useCurrentTime';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
+import { TimeInfo } from '../shared/TimeInfo';
 import type { Sensor } from '../types';
 
 export function SensorListView() {
@@ -15,20 +15,8 @@ export function SensorListView() {
     refreshing,
     error,
     lastUpdated,
-    timeZone,
     refetch
   } = useFetchData<Sensor[]>('/api/sensors');
-  const { currentTime, timeZone: localTimeZone } = useCurrentTime();
-  const timeZoneToUse = timeZone || localTimeZone;
-
-  const formatDateTime = (date: Date | null) =>
-    date
-      ? new Intl.DateTimeFormat('es-ES', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-          timeZone: timeZoneToUse
-        }).format(date)
-      : 'Nunca';
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -53,10 +41,7 @@ export function SensorListView() {
           </button>
         </div>
       </div>
-      <p className="text-sm text-zinc-400">
-        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
-      </p>
+      <TimeInfo lastUpdated={lastUpdated} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sensors.map((sensor) => (

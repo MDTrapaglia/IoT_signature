@@ -2,11 +2,11 @@
 
 import { ExternalLink, Copy, RefreshCw } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
-import { useCurrentTime } from '../../hooks/useCurrentTime';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
 import { StatusBadge } from './StatusBadge';
+import { TimeInfo } from '../shared/TimeInfo';
 import type { OracleTransaction } from '../types';
 
 const EXPLORER_URL = 'https://preprod.cardanoscan.io';
@@ -18,20 +18,8 @@ export function TransactionHistoryView() {
     refreshing,
     error,
     lastUpdated,
-    timeZone,
     refetch
   } = useFetchData<OracleTransaction[]>('/api/transactions?limit=20');
-  const { currentTime, timeZone: localTimeZone } = useCurrentTime();
-  const timeZoneToUse = timeZone || localTimeZone;
-
-  const formatDateTime = (date: Date | null) =>
-    date
-      ? new Intl.DateTimeFormat('es-ES', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-          timeZone: timeZoneToUse
-        }).format(date)
-      : 'Nunca';
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
@@ -60,10 +48,7 @@ export function TransactionHistoryView() {
           </button>
         </div>
       </div>
-      <p className="text-sm text-zinc-400">
-        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
-      </p>
+      <TimeInfo lastUpdated={lastUpdated} />
 
       <div className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">

@@ -2,10 +2,10 @@
 
 import { CheckCircle, XCircle, Send, Anchor, ArrowRight, RefreshCw } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
-import { useCurrentTime } from '../../hooks/useCurrentTime';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
+import { TimeInfo } from '../shared/TimeInfo';
 import type { Measurement } from '../types';
 
 export function MeasurementTimelineView() {
@@ -15,20 +15,8 @@ export function MeasurementTimelineView() {
     refreshing,
     error,
     lastUpdated,
-    timeZone,
     refetch
   } = useFetchData<Measurement[]>('/api/measurements?limit=20');
-  const { currentTime, timeZone: localTimeZone } = useCurrentTime();
-  const timeZoneToUse = timeZone || localTimeZone;
-
-  const formatDateTime = (date: Date | null) =>
-    date
-      ? new Intl.DateTimeFormat('es-ES', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-          timeZone: timeZoneToUse
-        }).format(date)
-      : 'Nunca';
 
   if (loading) {
     return (
@@ -74,10 +62,7 @@ export function MeasurementTimelineView() {
           </button>
         </div>
       </div>
-      <p className="text-sm text-zinc-400">
-        Última actualización: <span className="text-zinc-200">{formatDateTime(lastUpdated)}</span> · Hora actual:{' '}
-        <span className="text-zinc-200">{formatDateTime(currentTime)}</span> ({timeZone})
-      </p>
+      <TimeInfo lastUpdated={lastUpdated} />
 
       <div className="space-y-4">
         {measurements.map((measurement) => {
