@@ -3,6 +3,7 @@ cd "$(dirname "$0")/../offchain/frontend"
 
 PID_FILE=".frontend.pid"
 LOCK_FILE=".next/dev/lock"
+PORT=${PORT:-3000}
 
 # Kill all next dev processes (not just parent npm process)
 echo "Buscando procesos 'next dev' existentes..."
@@ -23,8 +24,8 @@ fi
 sleep 2
 
 # Start new process
-echo "Iniciando frontend (npm run dev)..."
-npm run dev &
+echo "Iniciando frontend en puerto ${PORT} (npm run dev)..."
+PORT=$PORT npm run dev &
 echo $! > "$PID_FILE"
 echo "Frontend iniciado (PID: $(cat $PID_FILE))"
-echo "URL: http://localhost:3000"
+echo "URL: http://localhost:${PORT}"
