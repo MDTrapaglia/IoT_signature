@@ -7,6 +7,7 @@ import { ErrorAlert } from '../shared/ErrorAlert';
 import type { Statistics, Measurement, OracleTransaction } from '../types';
 import { StatsCard } from './StatsCard';
 import { TimeInfo } from '../shared/TimeInfo';
+import { formatTime } from '@/app/utils/format';
 
 export function DashboardView() {
   const {
@@ -59,8 +60,8 @@ export function DashboardView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-zinc-100">Panel de Control</h2>
-          <p className="text-sm text-zinc-400">Datos más recientes del backend y la blockchain</p>
+          <h2 className="text-xl font-semibold text-zinc-100">Dashboard</h2>
+          <p className="text-sm text-zinc-400">Latest data from the backend and the blockchain</p>
         </div>
         <button
           onClick={handleRefresh}
@@ -68,7 +69,7 @@ export function DashboardView() {
           disabled={isBusy}
         >
           <RefreshCw className="w-4 h-4" />
-          {isBusy ? 'Actualizando...' : 'Actualizar'}
+          {isBusy ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
       <TimeInfo
@@ -82,30 +83,30 @@ export function DashboardView() {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title="Mediciones Totales"
+            title="Total Measurements"
             value={stats.measurements.total}
-            subtitle={`${stats.measurements.verified} verificadas`}
+            subtitle={`${stats.measurements.verified} verified`}
             icon={CheckCircle}
             color="green"
           />
           <StatsCard
-            title="Sensores Activos"
+            title="Active Sensors"
             value={stats.sensors.active}
             subtitle={`${stats.sensors.total} total`}
             icon={Cpu}
             color="blue"
           />
           <StatsCard
-            title="Tx Pendientes"
+            title="Pending TXs"
             value={stats.transactions.pending}
-            subtitle={`${stats.transactions.retrying} reintentando`}
+            subtitle={`${stats.transactions.retrying} retrying`}
             icon={Clock}
             color="yellow"
           />
           <StatsCard
-            title="Tx Confirmadas"
+            title="Confirmed TXs"
             value={stats.transactions.confirmed}
-            subtitle={`${stats.transactions.failed} fallidas`}
+            subtitle={`${stats.transactions.failed} failed`}
             icon={Link}
             color={stats.transactions.confirmed > 0 ? 'green' : 'red'}
           />
@@ -116,10 +117,10 @@ export function DashboardView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Measurements */}
         <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-zinc-100 mb-4">Últimas Mediciones</h3>
+          <h3 className="text-lg font-semibold text-zinc-100 mb-4">Latest Measurements</h3>
           {measurementsError && <ErrorAlert message={measurementsError} />}
           {measurements && measurements.length === 0 && (
-            <p className="text-sm text-zinc-400 text-center py-4">No hay mediciones</p>
+            <p className="text-sm text-zinc-400 text-center py-4">No measurements</p>
           )}
           <div className="space-y-3">
             {measurements?.map((m) => (
@@ -135,13 +136,11 @@ export function DashboardView() {
                     <p className="text-xs text-zinc-400">
                       {m.temperature && m.humidity
                         ? `${m.temperature / 10}°C, ${m.humidity / 10}%`
-                        : 'Sin datos'}
+                        : 'No data'}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-zinc-500">
-                  {new Date(m.received_at).toLocaleTimeString()}
-                </span>
+                <span className="text-xs text-zinc-500">{formatTime(m.received_at)}</span>
               </div>
             ))}
           </div>
@@ -149,10 +148,10 @@ export function DashboardView() {
 
         {/* Recent Transactions */}
         <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-zinc-100 mb-4">Últimas Transacciones</h3>
+          <h3 className="text-lg font-semibold text-zinc-100 mb-4">Latest Transactions</h3>
           {transactionsError && <ErrorAlert message={transactionsError} />}
           {transactions && transactions.length === 0 && (
-            <p className="text-sm text-zinc-400 text-center py-4">No hay transacciones</p>
+            <p className="text-sm text-zinc-400 text-center py-4">No transactions</p>
           )}
           <div className="space-y-3">
             {transactions?.map((tx) => {
@@ -174,9 +173,7 @@ export function DashboardView() {
                       <p className="text-xs text-zinc-400">{tx.status}</p>
                     </div>
                   </div>
-                  <span className="text-xs text-zinc-500">
-                    {new Date(tx.submitted_at).toLocaleTimeString()}
-                  </span>
+                  <span className="text-xs text-zinc-500">{formatTime(tx.submitted_at)}</span>
                 </div>
               );
             })}

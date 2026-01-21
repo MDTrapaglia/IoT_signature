@@ -7,6 +7,7 @@ import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
 import { TimeInfo } from '../shared/TimeInfo';
 import type { Measurement } from '../types';
+import { formatDateTime, formatTime } from '@/app/utils/format';
 
 export function MeasurementTimelineView() {
   const {
@@ -21,7 +22,7 @@ export function MeasurementTimelineView() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-zinc-400">Cargando mediciones desde el backend...</p>
+        <p className="text-sm text-zinc-400">Loading measurements from the backend...</p>
         <LoadingSpinner />
       </div>
     );
@@ -32,9 +33,9 @@ export function MeasurementTimelineView() {
       <div className="space-y-4">
         <ErrorAlert message={error} />
         <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-2">Información de debug:</p>
+          <p className="text-sm text-zinc-400 mb-2">Debug info:</p>
           <p className="text-xs font-mono text-zinc-500">
-            Verifica la consola del navegador (F12) para más detalles.
+            Check the browser console (F12) for more details.
           </p>
           <p className="text-xs font-mono text-zinc-500 mt-2">
             API URL: {process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/iot' : 'http://localhost:3001')}
@@ -44,21 +45,21 @@ export function MeasurementTimelineView() {
     );
   }
 
-  if (!measurements || measurements.length === 0) return <EmptyState message="No hay mediciones" />;
+  if (!measurements || measurements.length === 0) return <EmptyState message="No measurements available" />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-zinc-100">Timeline de Mediciones</h2>
+        <h2 className="text-xl font-semibold text-zinc-100">Measurement Timeline</h2>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-400">{measurements.length} mediciones</span>
+          <span className="text-sm text-zinc-400">{measurements.length} measurements</span>
           <button
             onClick={refetch}
             className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={refreshing}
           >
             <RefreshCw className="w-4 h-4" />
-            {refreshing ? 'Actualizando...' : 'Actualizar'}
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -75,13 +76,11 @@ export function MeasurementTimelineView() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-100">{measurement.sensor_id}</h3>
-                  <p className="text-sm text-zinc-400">
-                    {new Date(measurement.received_at).toLocaleString()}
-                  </p>
+                  <p className="text-sm text-zinc-400">{formatDateTime(measurement.received_at)}</p>
                 </div>
                 {measurement.temperature && measurement.humidity && (
                   <div className="text-right">
-                    <p className="text-sm text-zinc-400">Temperatura / Humedad</p>
+                    <p className="text-sm text-zinc-400">Temperature / Humidity</p>
                     <p className="text-lg font-semibold text-zinc-100">
                       {measurement.temperature / 10}°C / {measurement.humidity / 10}%
                     </p>
@@ -91,57 +90,55 @@ export function MeasurementTimelineView() {
 
               {/* Status Flow */}
               <div className="flex items-center gap-3 mb-4 p-4 bg-zinc-900 rounded-lg overflow-x-auto">
-                {/* Recibido */}
+                {/* Received */}
                 <div className="flex flex-col items-center gap-2 flex-shrink-0">
                   <CheckCircle className="w-5 h-5 text-green-400" />
-                  <span className="text-xs text-zinc-400">Recibido</span>
-                  <span className="text-xs text-zinc-500">
-                    {new Date(measurement.received_at).toLocaleTimeString()}
-                  </span>
+                  <span className="text-xs text-zinc-400">Received</span>
+                  <span className="text-xs text-zinc-500">{formatTime(measurement.received_at)}</span>
                 </div>
 
                 <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
 
-                {/* Verificado */}
+                {/* Verified */}
                 <div className="flex flex-col items-center gap-2 flex-shrink-0">
                   {measurement.verified ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
                   ) : (
                     <XCircle className="w-5 h-5 text-red-400" />
                   )}
-                  <span className="text-xs text-zinc-400">Verificado</span>
+                  <span className="text-xs text-zinc-400">Verified</span>
                   <span className={`text-xs ${measurement.verified ? 'text-green-400' : 'text-red-400'}`}>
-                    {measurement.verified ? 'Válido' : 'Inválido'}
+                    {measurement.verified ? 'Valid' : 'Invalid'}
                   </span>
                 </div>
 
                 <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
 
-                {/* Enviado */}
+                {/* Submitted */}
                 <div className="flex flex-col items-center gap-2 flex-shrink-0">
                   {hasTransaction ? (
                     <Send className="w-5 h-5 text-blue-400" />
                   ) : (
                     <Send className="w-5 h-5 text-zinc-600" />
                   )}
-                  <span className="text-xs text-zinc-400">Enviado</span>
+                  <span className="text-xs text-zinc-400">Submitted</span>
                   <span className={`text-xs ${hasTransaction ? 'text-blue-400' : 'text-zinc-600'}`}>
-                    {hasTransaction ? 'Sí' : 'No'}
+                    {hasTransaction ? 'Yes' : 'No'}
                   </span>
                 </div>
 
                 <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
 
-                {/* Confirmado */}
+                {/* Confirmed */}
                 <div className="flex flex-col items-center gap-2 flex-shrink-0">
                   {isConfirmed ? (
                     <Anchor className="w-5 h-5 text-green-400" />
                   ) : (
                     <Anchor className="w-5 h-5 text-zinc-600" />
                   )}
-                  <span className="text-xs text-zinc-400">Confirmado</span>
+                  <span className="text-xs text-zinc-400">Confirmed</span>
                   <span className={`text-xs ${isConfirmed ? 'text-green-400' : 'text-zinc-600'}`}>
-                    {isConfirmed ? 'Sí' : 'No'}
+                    {isConfirmed ? 'Yes' : 'No'}
                   </span>
                 </div>
               </div>
@@ -167,7 +164,7 @@ export function MeasurementTimelineView() {
                 <div className="mt-4 pt-4 border-t border-zinc-700">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-zinc-400">Transacción Blockchain</p>
+                      <p className="text-sm text-zinc-400">Blockchain Transaction</p>
                       <p className="text-sm font-medium text-zinc-100">
                         {measurement.oracle_transaction.type} - {measurement.oracle_transaction.status}
                       </p>
@@ -179,7 +176,7 @@ export function MeasurementTimelineView() {
                         rel="noopener noreferrer"
                         className="text-xs text-blue-400 hover:underline"
                       >
-                        Ver en Explorer →
+                        View in Explorer →
                       </a>
                     )}
                   </div>
@@ -189,7 +186,7 @@ export function MeasurementTimelineView() {
               {/* Verification Error */}
               {measurement.verification_error && (
                 <div className="mt-4 p-3 bg-red-950/30 border border-red-700 rounded text-sm text-red-400">
-                  <p className="font-medium">Error de verificación:</p>
+                  <p className="font-medium">Verification error:</p>
                   <p className="text-xs mt-1">{measurement.verification_error}</p>
                 </div>
               )}

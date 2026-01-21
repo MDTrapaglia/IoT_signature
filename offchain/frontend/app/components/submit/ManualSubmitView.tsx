@@ -5,6 +5,7 @@ import { Send, Hash, Key, Check, Loader2, RefreshCw } from 'lucide-react';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { buildMessageClient, calculateHashClient } from '@/app/utils/message-builder';
+import { formatDateTime } from '@/app/utils/format';
 import { getApiBaseUrl, API_ACCESS_TOKEN } from '@/app/utils/api';
 
 const API_URL = getApiBaseUrl();
@@ -61,7 +62,7 @@ export default function ManualSubmitView() {
       const expectedHash = calculateHashClient(message);
 
       if (hashToValidate.toUpperCase() !== expectedHash.toUpperCase()) {
-        setHashWarning('⚠️ Hash no coincide con los datos del formulario. La transacción será rechazada on-chain.');
+        setHashWarning('⚠️ Hash does not match the form data. The transaction will be rejected on-chain.');
       } else {
         setHashWarning(null);
       }
@@ -153,9 +154,9 @@ export default function ManualSubmitView() {
   const handleSignatureChange = (newSignature: string) => {
     setSignature(newSignature);
     if (newSignature.length > 0 && newSignature.length !== 128) {
-      setSignatureWarning('⚠️ Firma editada manualmente. Longitud incorrecta (debe ser 128 caracteres hex).');
+      setSignatureWarning('⚠️ Manually edited signature. Incorrect length (must be 128 hex characters).');
     } else if (newSignature.length === 128) {
-      setSignatureWarning('⚠️ Firma editada manualmente. Puede ser inválida y la transacción será rechazada on-chain.');
+      setSignatureWarning('⚠️ Manually edited signature. It may be invalid and the transaction will be rejected on-chain.');
     } else {
       setSignatureWarning(null);
     }
@@ -201,15 +202,15 @@ export default function ManualSubmitView() {
       if (!res.ok) {
         // If error but has measurement_id, it was saved for on-chain rejection demo
         if (data.measurement_id) {
-          setSuccess(`⚠️ Medición guardada con datos inválidos! ID: ${data.measurement_id}. La medición será enviada a Cardano pero el validador on-chain la rechazará. Error: ${data.error}`);
+          setSuccess(`⚠️ Measurement saved with invalid data! ID: ${data.measurement_id}. The measurement will be submitted to Cardano but the on-chain validator will reject it. Error: ${data.error}`);
         } else {
           throw new Error(data.error || 'Failed to submit measurement');
         }
       } else {
         // Success case
-        let successMsg = `✅ Medición enviada! ID: ${data.measurement_id}`;
+        let successMsg = `✅ Measurement submitted! ID: ${data.measurement_id}`;
         if (hashWarning || signatureWarning) {
-          successMsg += '. ⚠️ Datos inválidos - La transacción será rechazada on-chain.';
+          successMsg += '. ⚠️ Invalid data - The transaction will be rejected on-chain.';
         }
         setSuccess(successMsg);
       }
@@ -315,9 +316,7 @@ export default function ManualSubmitView() {
                   Now
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 mt-1">
-                {new Date(formData.timestamp).toLocaleString()}
-              </p>
+              <p className="text-xs text-zinc-500 mt-1">{formatDateTime(formData.timestamp)}</p>
             </div>
           </div>
         </div>
@@ -365,7 +364,7 @@ export default function ManualSubmitView() {
               {hash && !hashWarning && (
                 <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
                   <Check className="w-3 h-3" />
-                  Hash válido ({hash.length} characters)
+                  Valid hash ({hash.length} characters)
                 </p>
               )}
               {hashWarning && (
@@ -410,7 +409,7 @@ export default function ManualSubmitView() {
               {signature && !signatureWarning && (
                 <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
                   <Check className="w-3 h-3" />
-                  Firma válida ({signature.length} characters)
+                  Valid signature ({signature.length} characters)
                 </p>
               )}
               {signatureWarning && (
@@ -466,10 +465,10 @@ export default function ManualSubmitView() {
             <div className="mb-4 flex items-center gap-3 p-4 bg-yellow-950/30 border border-yellow-700 rounded-lg text-yellow-400">
               <span className="text-lg flex-shrink-0">⚠️</span>
               <div className="text-sm">
-                <p className="font-semibold mb-1">Advertencia: Datos Inválidos</p>
+                <p className="font-semibold mb-1">Warning: Invalid Data</p>
                 <p className="text-xs text-yellow-300">
-                  Los datos que vas a enviar contienen errores. El backend los aceptará pero la transacción será rechazada por el validador on-chain en Cardano.
-                  Esto es útil para demostrar cómo funciona la validación en blockchain.
+                  The data you are about to send contains errors. The backend will accept it, but the on-chain validator on Cardano will reject the transaction.
+                  This is useful to demonstrate how on-chain validation works.
                 </p>
               </div>
             </div>

@@ -8,6 +8,7 @@ import { EmptyState } from '../shared/EmptyState';
 import { StatusBadge } from './StatusBadge';
 import { TimeInfo } from '../shared/TimeInfo';
 import type { OracleTransaction } from '../types';
+import { formatDateTime } from '@/app/utils/format';
 
 const EXPLORER_URL = 'https://preprod.cardanoscan.io';
 
@@ -23,7 +24,7 @@ export function TransactionHistoryView() {
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
-  if (!transactions || transactions.length === 0) return <EmptyState message="No hay transacciones blockchain" />;
+  if (!transactions || transactions.length === 0) return <EmptyState message="No blockchain transactions" />;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -33,18 +34,18 @@ export function TransactionHistoryView() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-zinc-100">Historial de Transacciones</h2>
-          <p className="text-sm text-zinc-400">Últimas operaciones enviadas a Cardano</p>
+          <h2 className="text-xl font-semibold text-zinc-100">Transaction History</h2>
+          <p className="text-sm text-zinc-400">Latest operations sent to Cardano</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-400">{transactions.length} transacciones</span>
+          <span className="text-sm text-zinc-400">{transactions.length} transactions</span>
           <button
             onClick={refetch}
             className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={refreshing}
           >
             <RefreshCw className="w-4 h-4" />
-            {refreshing ? 'Actualizando...' : 'Actualizar'}
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -55,13 +56,13 @@ export function TransactionHistoryView() {
           <table className="w-full">
             <thead className="bg-zinc-900 border-b border-zinc-700">
               <tr className="text-left text-xs text-zinc-400">
-                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Sensor</th>
-                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">TX Hash</th>
                 <th className="px-4 py-3">Block</th>
-                <th className="px-4 py-3">Enviada</th>
-                <th className="px-4 py-3">Confirmada</th>
+                <th className="px-4 py-3">Submitted</th>
+                <th className="px-4 py-3">Confirmed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-700">
@@ -85,7 +86,7 @@ export function TransactionHistoryView() {
                         <button
                           onClick={() => copyToClipboard(tx.tx_hash!)}
                           className="p-1 hover:bg-zinc-700 rounded"
-                          title="Copiar"
+                          title="Copy"
                         >
                           <Copy className="w-3 h-3 text-zinc-400" />
                         </button>
@@ -94,7 +95,7 @@ export function TransactionHistoryView() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1 hover:bg-zinc-700 rounded"
-                          title="Ver en explorer"
+                          title="View in explorer"
                         >
                           <ExternalLink className="w-3 h-3 text-blue-400" />
                         </a>
@@ -112,14 +113,12 @@ export function TransactionHistoryView() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs text-zinc-400">
-                      {new Date(tx.submitted_at).toLocaleString()}
+                      {formatDateTime(tx.submitted_at)}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     {tx.confirmed_at ? (
-                      <span className="text-xs text-zinc-400">
-                        {new Date(tx.confirmed_at).toLocaleString()}
-                      </span>
+                      <span className="text-xs text-zinc-400">{formatDateTime(tx.confirmed_at)}</span>
                     ) : (
                       <span className="text-xs text-zinc-500">-</span>
                     )}

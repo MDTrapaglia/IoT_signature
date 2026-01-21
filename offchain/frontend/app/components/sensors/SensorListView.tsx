@@ -7,6 +7,7 @@ import { ErrorAlert } from '../shared/ErrorAlert';
 import { EmptyState } from '../shared/EmptyState';
 import { TimeInfo } from '../shared/TimeInfo';
 import type { Sensor } from '../types';
+import { formatDateTime } from '@/app/utils/format';
 
 export function SensorListView() {
   const {
@@ -20,24 +21,24 @@ export function SensorListView() {
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorAlert message={error} />;
-  if (!sensors || sensors.length === 0) return <EmptyState message="No hay sensores activos" />;
+  if (!sensors || sensors.length === 0) return <EmptyState message="No active sensors" />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-zinc-100">Sensores Activos</h2>
-          <p className="text-sm text-zinc-400">Configuración registrada en el backend</p>
+          <h2 className="text-xl font-semibold text-zinc-100">Active Sensors</h2>
+          <p className="text-sm text-zinc-400">Configuration stored in the backend</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-400">{sensors.length} sensores</span>
+          <span className="text-sm text-zinc-400">{sensors.length} sensors</span>
           <button
             onClick={refetch}
             className="inline-flex items-center gap-2 px-3 py-2 rounded bg-zinc-700 text-zinc-100 hover:bg-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={refreshing}
           >
             <RefreshCw className="w-4 h-4" />
-            {refreshing ? 'Actualizando...' : 'Actualizar'}
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -61,7 +62,7 @@ export function SensorListView() {
                   ? 'bg-green-500/10 text-green-400'
                   : 'bg-zinc-700 text-zinc-400'
               }`}>
-                {sensor.is_active ? 'Activo' : 'Inactivo'}
+                {sensor.is_active ? 'Active' : 'Inactive'}
               </span>
             </div>
 
@@ -71,13 +72,13 @@ export function SensorListView() {
                 <p className="font-mono text-xs text-zinc-300 truncate">
                   {sensor.nft_policy_id && sensor.nft_asset_name
                     ? `${sensor.nft_policy_id.substring(0, 16)}...`
-                    : 'No configurado'}
+                    : 'Not configured'}
                 </p>
               </div>
 
               {sensor.latest_measurement && (
                 <div className="pt-3 border-t border-zinc-700">
-                  <p className="text-zinc-400 mb-2">Última Medición</p>
+                  <p className="text-zinc-400 mb-2">Latest Measurement</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {sensor.latest_measurement.verified ? (
@@ -88,11 +89,11 @@ export function SensorListView() {
                       <span className="text-zinc-300">
                         {sensor.latest_measurement.temperature && sensor.latest_measurement.humidity
                           ? `${sensor.latest_measurement.temperature / 10}°C, ${sensor.latest_measurement.humidity / 10}%`
-                          : 'Sin datos'}
+                          : 'No data'}
                       </span>
                     </div>
                     <span className="text-xs text-zinc-500">
-                      {new Date(sensor.latest_measurement.received_at).toLocaleString()}
+                      {formatDateTime(sensor.latest_measurement.received_at)}
                     </span>
                   </div>
                 </div>
@@ -101,11 +102,11 @@ export function SensorListView() {
               {sensor._count && (
                 <div className="pt-3 border-t border-zinc-700 grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-zinc-400">Mediciones</p>
+                    <p className="text-zinc-400">Measurements</p>
                     <p className="text-xl font-semibold text-zinc-100">{sensor._count.measurements}</p>
                   </div>
                   <div>
-                    <p className="text-zinc-400">Transacciones</p>
+                    <p className="text-zinc-400">Transactions</p>
                     <p className="text-xl font-semibold text-zinc-100">{sensor._count.oracle_transactions}</p>
                   </div>
                 </div>
