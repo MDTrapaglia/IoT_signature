@@ -12,11 +12,16 @@ PORTS="3000 3001"
 LOG_FILE="${ROOT_DIR}/logs/dev.log"
 LOG_LINES="${LOG_LINES:-120}"
 LOG_FOLLOW_SECS="${LOG_FOLLOW_SECS:-5}"
+MODE="prod"
+
+if [[ ${1:-} == "--dev" ]]; then
+  MODE="dev"
+fi
 
 START_CMDS=$(
   cat <<EOF
-${SCRIPT_DIR}/backend_start.sh >>"${LOG_FILE}" 2>&1
-${SCRIPT_DIR}/frontend_start.sh >>"${LOG_FILE}" 2>&1
+${SCRIPT_DIR}/backend_start.sh "${MODE}" >>"${LOG_FILE}" 2>&1
+${SCRIPT_DIR}/frontend_start.sh "${MODE}" >>"${LOG_FILE}" 2>&1
 EOF
 )
 

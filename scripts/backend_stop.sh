@@ -1,19 +1,28 @@
 #!/bin/bash
+set -euo pipefail
+
 cd "$(dirname "$0")/.."
 
-PID_FILE=".dev.pid"
-
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if kill -0 "$PID" 2>/dev/null; then
-        echo "Matando proceso (PID: $PID)..."
-        kill "$PID"
-        rm -f "$PID_FILE"
-        echo "Proceso detenido"
+stop_pid_file() {
+  local file="$1"
+  if [[ -f "$file" ]]; then
+    local pid
+    pid=$(cat "$file")
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "Stopping backend (PID: $pid) from ${file}..."
+      kill "$pid"
+      rm -f "$file"
+      echo "Backend stopped (${file})"
     else
-        echo "El proceso ya no existe"
-        rm -f "$PID_FILE"
+      echo "Process in ${file} no longer exists"
+      rm -f "$file"
     fi
-else
-    echo "No hay proceso ejecutándose"
+  fi
+}
+
+stop_pid_file ".backend.dev.pid"
+stop_pid_file ".backend.prod.pid"
+
+if [[ ! -f ".backend.dev.pid" && ! -f ".backend.prod.pid" ]]; then
+  echo "No backend process found"
 fi

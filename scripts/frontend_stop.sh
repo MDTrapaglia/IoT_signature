@@ -1,23 +1,36 @@
 #!/bin/bash
+set -euo pipefail
+
 cd "$(dirname "$0")/../offchain/frontend"
 
-PID_FILE=".frontend.pid"
 LOCK_FILE=".next/dev/lock"
 
-# Kill all next dev processes (child processes of npm)
-echo "Deteniendo todos los procesos 'next dev'..."
-pkill -f "next dev" 2>/dev/null && echo "Procesos detenidos" || echo "No se encontraron procesos corriendo"
+stop_pid_file() {
+  local file="$1"
+  if [[ -f "$file" ]]; then
+    local pid
+    pid=$(cat "$file")
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "Stopping frontend (PID: $pid) from ${file}..."
+      kill "$pid"
+      rm -f "$file"
+      echo "Frontend stopped (${file})"
+    else
+      echo "Process in ${file} no longer exists"
+      rm -f "$file"
+    fi
+  fi
+}
 
-# Clean up PID file
-if [ -f "$PID_FILE" ]; then
-    rm -f "$PID_FILE"
-    echo "Archivo PID eliminado"
-fi
+stop_pid_file ".frontend.dev.pid"
+stop_pid_file ".frontend.prod.pid"
 
 # Remove lock file if exists
-if [ -f "$LOCK_FILE" ]; then
-    echo "Eliminando lock file..."
+if [[ -f "$LOCK_FILE" ]]; then
+    echo "Removing lock file..."
     rm -f "$LOCK_FILE"
 fi
 
-echo "Frontend detenido completamente"
+if [[ ! -f ".frontend.dev.pid" && ! -f ".frontend.prod.pid" ]]; then
+  echo "No frontend process found"
+fi
